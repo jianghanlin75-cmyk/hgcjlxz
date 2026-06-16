@@ -1,0 +1,12 @@
+name = "hbeu-freshman-site"
+compatibility_date = "2026-06-16"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hbeu_site"
+database_id = "replace-with-your-d1-database-id"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "hbeu-images"

@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>湖北工程学院新生导览</title>
+    <meta name="description" content="面向湖北工程学院新生的互动式校园宣传与生活导览网站基础框架。">
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./lucide.min.js" defer></script>
+    <script src="https://webapi.amap.com/loader.js" defer></script>
+    <script src="./site-data.js" defer></script>
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <canvas id="campusCanvas" aria-hidden="true"></canvas>
+
+    <header class="topbar" data-elevated="false">
+      <a class="brand" href="#home" aria-label="回到首页">
+        <span class="brand-mark">湖</span>
+        <span>
+          <strong>湖北工程学院</strong>
+          <small>Freshman Atlas</small>
+        </span>
+      </a>
+      <nav class="topnav" aria-label="主导航">
+        <a href="#modules">板块</a>
+        <a href="#modules">点位</a>
+        <a href="#qa">Q&A</a>
+        <a class="owner-only" href="#image-lab">图片通道</a>
+      </nav>
+      <div class="top-actions">
+        <button class="owner-button" type="button" id="toggleOwner" aria-label="进入主人权限" title="主人权限">
+          <i data-lucide="lock-keyhole"></i>
+          <span>主人权限</span>
+        </button>
+        <button class="owner-button owner-only" type="button" data-add-section aria-label="新增板块" title="新增板块">
+          <i data-lucide="square-plus"></i>
+          <span>新增板块</span>
+        </button>
+        <button class="icon-button owner-only" type="button" id="exportBackup" aria-label="导出网站备份" title="导出备份">
+          <i data-lucide="download"></i>
+        </button>
+        <button class="icon-button owner-only" type="button" id="importBackup" aria-label="导入网站备份" title="导入备份">
+          <i data-lucide="upload-cloud"></i>
+        </button>
+        <input id="importBackupInput" type="file" accept="application/json,.json" hidden>
+        <button class="icon-button owner-only" type="button" id="openImageLab" aria-label="打开图片通道" title="图片通道">
+          <i data-lucide="image-plus"></i>
+        </button>
+        <button class="icon-button" type="button" id="toggleMotion" aria-label="切换动效" title="切换动效">
+          <i data-lucide="waves"></i>
+        </button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="home">
+        <div class="hero-media image-channel" data-slot="hero-campus" data-empty="true">
+          <input class="file-input" type="file" accept="image/*" aria-label="上传首页校园图片">
+          <button class="image-action owner-only" type="button">
+            <i data-lucide="upload"></i>
+            <span>替换首页图</span>
+          </button>
+        </div>
+        <div class="hero-content">
+          <p class="eyebrow">2026 新生校园导览</p>
+          <h1>湖北工程学院</h1>
+          <p class="hero-copy">把教学楼、快递点、寝室、运动场、图书馆、校门交通和校内外美食整理成一张会动的校园地图。</p>
+          <div class="hero-actions">
+            <a class="primary-link" href="#modules">
+              <span>开始探索</span>
+              <i data-lucide="arrow-down"></i>
+            </a>
+            <button class="secondary-link owner-only" type="button" data-open-image-lab>
+              <i data-lucide="image-plus"></i>
+              <span>批量放图</span>
+            </button>
+          </div>
+        </div>
+        <div class="hero-radar" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </section>
+
+      <section class="route-strip" aria-labelledby="routeTitle">
+        <div class="section-heading compact">
+          <p class="eyebrow">Interactive Routes</p>
+          <h2 id="routeTitle">新生第一周路线</h2>
+        </div>
+        <div class="route-tabs" id="routeTabs" role="tablist" aria-label="新生路线"></div>
+        <div class="route-card" id="routeCard"></div>
+      </section>
+
+      <section class="modules" id="modules" aria-label="校园板块">
+        <aside class="module-rail" aria-label="板块导航">
+          <div class="rail-title">板块</div>
+          <div class="module-nav" id="moduleNav"></div>
+        </aside>
+        <div class="module-stage" id="moduleStage"></div>
+      </section>
+
+      <section class="qa-section" id="qa" aria-labelledby="qaTitle">
+        <div class="section-heading compact">
+          <p class="eyebrow">Q&A</p>
+          <h2 id="qaTitle">新生问答</h2>
+        </div>
+        <div class="qa-toolbar owner-only">
+          <button class="tool-button" type="button" data-add-qa>
+            <i data-lucide="plus"></i>
+            <span>新增问答</span>
+          </button>
+        </div>
+        <div class="qa-list" id="qaList"></div>
+      </section>
+    </main>
+
+    <aside class="image-lab" id="image-lab" aria-hidden="true" aria-label="图片通道">
+      <div class="image-lab-panel">
+        <div class="lab-header">
+          <div>
+            <p class="eyebrow">Image Channels</p>
+            <h2>图片通道</h2>
+          </div>
+          <button class="icon-button" type="button" id="closeImageLab" aria-label="关闭图片通道">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <p class="lab-copy">每个卡片槽位都可以放多张图片并在卡片表面切换预览；长期替换时，把图片放进 <code>assets/images</code>，再在 <code>site-data.js</code> 的对应 <code>image</code> 字段写入路径。</p>
+        <div class="slot-list" id="slotList"></div>
+      </div>
+    </aside>
+
+    <button class="back-top" id="backTop" type="button" aria-label="回到顶部">
+      <i data-lucide="arrow-up"></i>
+    </button>
+  </body>
+</html>
