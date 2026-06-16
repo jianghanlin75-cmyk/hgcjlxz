@@ -34,10 +34,13 @@ body {
   font-family: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   color: var(--ink);
   background:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22360%22%20height%3D%22220%22%20viewBox%3D%220%200%20360%20220%22%3E%3Cg%20transform%3D%22rotate%28-18%20180%20110%29%22%3E%3Ctext%20x%3D%2224%22%20y%3D%22120%22%20fill%3D%22rgba%2821%2C23%2C24%2C0.06%29%22%20font-size%3D%2218%22%20font-family%3D%22PingFang%20SC%2C%20Microsoft%20YaHei%2C%20Arial%2C%20sans-serif%22%3E%E9%95%BF%E9%A2%88%E9%B9%BF%E5%AD%A6%E9%95%BF%EF%BC%88%E6%B9%96%E5%8C%97%E5%B7%A5%E7%A8%8B%E5%AD%A6%E9%99%A2%EF%BC%89%40hgcjlxz%3C%2Ftext%3E%3C%2Fg%3E%3C%2Fsvg%3E"),
     linear-gradient(90deg, rgba(21, 23, 24, .045) 1px, transparent 1px),
     linear-gradient(0deg, rgba(21, 23, 24, .04) 1px, transparent 1px),
     var(--paper);
-  background-size: 44px 44px;
+  background-repeat: repeat, repeat, repeat, repeat;
+  background-position: center center, 0 0, 0 0, 0 0;
+  background-size: 360px 220px, 44px 44px, 44px 44px, auto;
   letter-spacing: 0;
   overflow-x: hidden;
 }
@@ -743,10 +746,7 @@ body:not(.owner-unlocked) .owner-only {
 }
 
 .module-tone {
-  max-width: 680px;
-  margin: 14px 0 0;
-  color: var(--muted);
-  line-height: 1.8;
+  display: none;
 }
 
 .map-stage {
@@ -1397,16 +1397,6 @@ body.owner-unlocked .place-card.is-hidden-card::before {
   outline: 0;
 }
 
-.image-nav:disabled {
-  opacity: .46;
-  cursor: default;
-}
-
-.image-nav:disabled:hover {
-  transform: none;
-  background: rgba(255, 255, 255, .84);
-}
-
 .image-count {
   position: absolute;
   left: 0;
@@ -1594,128 +1584,6 @@ body.owner-unlocked .place-card.is-hidden-card::before {
 
 .module-panel.has-empty .card-grid {
   display: none;
-}
-
-.qa-section {
-  scroll-margin-top: 96px;
-  width: min(1180px, calc(100% - 40px));
-  margin: 34px auto 84px;
-  padding: 38px 0 0;
-  border-top: 1px solid var(--line);
-}
-
-.qa-toolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin: -42px 0 18px;
-}
-
-.qa-list {
-  display: grid;
-  gap: 14px;
-}
-
-.qa-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: start;
-  padding: 18px;
-  border: 1px solid rgba(21, 23, 24, .14);
-  border-radius: 8px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, .90), rgba(245, 251, 249, .82));
-  box-shadow: var(--soft-shadow);
-  cursor: pointer;
-  transition: transform .24s var(--ease), box-shadow .24s var(--ease), border-color .24s var(--ease);
-}
-
-.qa-card:nth-child(3n + 2) {
-  background: linear-gradient(90deg, rgba(255, 255, 255, .92), rgba(255, 248, 232, .84));
-}
-
-.qa-card:nth-child(3n) {
-  background: linear-gradient(90deg, rgba(255, 255, 255, .92), rgba(241, 246, 255, .84));
-}
-
-.qa-card:hover,
-.qa-card.is-picked {
-  transform: translateY(-3px);
-  border-color: rgba(15, 159, 143, .38);
-  box-shadow: var(--shadow);
-}
-
-.qa-number {
-  display: grid;
-  width: 48px;
-  height: 48px;
-  place-items: center;
-  border: 1px solid rgba(21, 23, 24, .12);
-  border-radius: 8px;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: "Cascadia Mono", Consolas, monospace;
-  font-weight: 800;
-}
-
-.qa-copy {
-  display: grid;
-  gap: 12px;
-}
-
-.qa-question,
-.qa-answer {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr);
-  gap: 10px;
-}
-
-.qa-question span,
-.qa-answer span {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 50%;
-  font-weight: 900;
-}
-
-.qa-question span {
-  background: rgba(226, 85, 63, .12);
-  color: #b8322a;
-}
-
-.qa-answer span {
-  background: rgba(15, 159, 143, .12);
-  color: #0f766c;
-}
-
-.qa-question h3 {
-  margin: 2px 0 0;
-  font-size: 1.08rem;
-  line-height: 1.45;
-}
-
-.qa-answer p {
-  margin: 2px 0 0;
-  color: var(--muted);
-  line-height: 1.75;
-  white-space: pre-line;
-}
-
-.qa-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.qa-empty {
-  display: grid;
-  gap: 8px;
-  padding: 22px;
-  border: 1px dashed rgba(21, 23, 24, .20);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, .62);
-  color: var(--muted);
 }
 
 .image-lab {
@@ -2063,30 +1931,6 @@ body.owner-unlocked .place-card.is-hidden-card::before {
 
   .card-grid {
     grid-template-columns: 1fr;
-  }
-
-  .qa-section {
-    width: auto;
-    margin: 24px 22px 70px;
-  }
-
-  .qa-toolbar {
-    justify-content: flex-start;
-    margin: 0 0 16px;
-  }
-
-  .qa-card {
-    grid-template-columns: 1fr;
-  }
-
-  .qa-number {
-    width: 42px;
-    height: 42px;
-  }
-
-  .qa-actions {
-    justify-content: flex-start;
-    flex-wrap: wrap;
   }
 
   .image-action {
