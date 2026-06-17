@@ -338,10 +338,10 @@
     if (ownerButton) {
       ownerButton.classList.toggle("is-active", state.ownerUnlocked);
       ownerButton.setAttribute("aria-pressed", String(state.ownerUnlocked));
-      ownerButton.setAttribute("aria-label", state.ownerUnlocked ? "退出主人权限" : "进入主人权限");
-      ownerButton.title = state.ownerUnlocked ? "已进入主人权限，点击退出" : "主人权限";
+      ownerButton.setAttribute("aria-label", state.ownerUnlocked ? "退出开发者权限" : "进入开发者权限");
+      ownerButton.title = state.ownerUnlocked ? "已进入开发者权限，点击退出" : "开发者权限";
       const label = $("span", ownerButton);
-      if (label) label.textContent = state.ownerUnlocked ? "退出主人" : "主人权限";
+      if (label) label.textContent = state.ownerUnlocked ? "退出开发者" : "开发者权限";
       const iconNode = $("i", ownerButton);
       if (iconNode) iconNode.setAttribute("data-lucide", state.ownerUnlocked ? "unlock-keyhole" : "lock-keyhole");
     }
@@ -352,31 +352,31 @@
   function unlockOwner() {
     let saved = localStorage.getItem(ownerPasscodeKey) || "";
     if (!saved) {
-      const pass = prompt("第一次使用主人权限，请设置一个主人口令。以后只有输入这个口令，才能编辑、上传、隐藏卡片。\n\n请不要设置太复杂，先记在纸上。", "");
+      const pass = prompt("第一次使用开发者权限，请设置一个开发者口令。以后只有输入这个口令，才能编辑、上传、隐藏卡片。\n\n请不要设置太复杂，先记在纸上。", "");
       if (pass === null) return false;
       const trimmed = pass.trim();
       if (trimmed.length < 4) {
-        alert("主人口令至少 4 个字符。请重新点击“主人权限”设置。");
+        alert("开发者口令至少 4 个字符。请重新点击“开发者权限”设置。");
         return false;
       }
       const again = prompt("请再输入一次主人口令，防止输错。", "");
       if (again === null) return false;
       if (again.trim() !== trimmed) {
-        alert("两次输入不一致。请重新点击“主人权限”设置。");
+        alert("两次输入不一致。请重新点击“开发者权限”设置。");
         return false;
       }
-      if (!safeSetItem(ownerPasscodeKey, trimmed, "主人口令")) return false;
+      if (!safeSetItem(ownerPasscodeKey, trimmed, "开发者口令")) return false;
       saved = trimmed;
     }
 
-    const input = prompt("请输入主人口令。", "");
+    const input = prompt("请输入开发者口令。", "");
     if (input === null) return false;
     if (input.trim() !== saved) {
-      alert("主人口令不正确。页面保持访客浏览模式。");
+      alert("开发者口令不正确。页面保持访客浏览模式。");
       return false;
     }
     setOwnerUnlocked(true);
-    alert("已进入主人权限。现在可以编辑、上传图片、隐藏/恢复卡片、导入导出备份。\n\n提醒：这个静态版口令只适合本地防误触，不等于真正云端后台账号。");
+    alert("已进入开发者权限。现在可以编辑、上传图片、隐藏/恢复卡片、导入导出备份。\n\n提醒：这个静态版口令只适合本地防误触，不等于真正云端后台账号。");
     return true;
   }
 
@@ -386,7 +386,7 @@
       closeCardEditor();
       closeImageLab();
       closeImageManager();
-      alert("已退出主人权限。现在是访客浏览模式。");
+      alert("已退出开发者权限。现在是访客浏览模式。");
       return;
     }
     unlockOwner();
@@ -394,7 +394,7 @@
 
   function requireOwner(actionName = "这个操作") {
     if (state.ownerUnlocked) return true;
-    alert(`${actionName}需要先进入主人权限。\n\n请点击右上角“主人权限”按钮，输入主人口令后再操作。`);
+    alert(`${actionName}需要先进入开发者权限。\n\n请点击右上角“开发者权限”按钮，输入开发者口令后再操作。`);
     return false;
   }
 
@@ -703,7 +703,7 @@
     `).join("") : `
       <div class="qa-empty">
         <strong>问答正在整理中</strong>
-        <span class="owner-only">进入主人权限后，可以添加任意数量的问题和答案。</span>
+        <span class="owner-only">进入开发者权限后，可以添加任意数量的问题和答案。</span>
       </div>
     `;
   }
@@ -1429,7 +1429,7 @@
         slot,
         elementId,
         tags: [],
-        facts: ["点击主人权限后，可以编辑这张卡片。", "可以继续添加元素、卡片、图片和地图点位。"],
+        facts: ["点击开发者权限后，可以编辑这张卡片。", "可以继续添加元素、卡片、图片和地图点位。"],
         gender: "all",
         hidden: false
       }]
