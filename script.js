@@ -17,6 +17,7 @@
     content: null,
     editor: null,
     qaEditor: null,
+    sectionToneEditor: null,
     imageManager: null,
     AMap: null,
     amapLoading: null,
@@ -570,6 +571,7 @@
             <h2 class="module-title">${escapeHtml(section.label)}</h2>
             <p class="module-tone">${escapeHtml(section.tone)}</p>
             <div class="section-admin owner-only">
+              <button class="tool-button ghost" type="button" data-edit-section-tone="${escapeHtml(section.id)}">${icon("square-pen")}<span>编辑描述</span></button>
               <button class="tool-button ghost" type="button" data-edit-section="${section.id}">${icon("settings-2")}<span>编辑板块</span></button>
               <button class="tool-button danger" type="button" data-delete-section="${section.id}">${icon("trash-2")}<span>删除板块</span></button>
             </div>
@@ -1467,6 +1469,66 @@
     rerenderEditableArea();
   }
 
+  function ensureSectionToneEditorShell() {
+    if ($("#sectionToneEditor")) return;
+    document.body.insertAdjacentHTML("beforeend", `
+      <aside class="content-editor" id="sectionToneEditor" aria-hidden="true" aria-label="编辑板块描述">
+        <form class="content-editor-panel" id="sectionToneEditorForm">
+          <div class="lab-header">
+            <div>
+              <p class="eyebrow">Section Description</p>
+              <h2 id="sectionToneEditorTitle">编辑板块描述</h2>
+            </div>
+            <button class="icon-button" type="button" data-close-section-tone-editor aria-label="关闭编辑">
+              ${icon("x")}
+            </button>
+          </div>
+          <div class="editor-fields">
+            <label>板块描述<textarea name="tone" rows="9" placeholder="输入显示在板块标题下方的描述文字"></textarea></label>
+          </div>
+          <div class="editor-actions">
+            <button class="tool-button" type="submit">${icon("save")}<span>保存描述</span></button>
+          </div>
+        </form>
+      </aside>
+    `);
+  }
+
+  function openSectionToneEditor(sectionId) {
+    if (!requireOwner("编辑板块描述")) return;
+    const section = getSection(sectionId);
+    if (!section) return;
+    ensureSectionToneEditorShell();
+    state.sectionToneEditor = { sectionId };
+    const form = $("#sectionToneEditorForm");
+    const editor = $("#sectionToneEditor");
+    $("#sectionToneEditorTitle").textContent = `编辑「${section.label}」描述`;
+    form.tone.value = section.tone || "";
+    editor.classList.add("is-open");
+    editor.setAttribute("aria-hidden", "false");
+    form.tone.focus();
+    refreshIcons();
+  }
+
+  function closeSectionToneEditor() {
+    const editor = $("#sectionToneEditor");
+    if (!editor) return;
+    editor.classList.remove("is-open");
+    editor.setAttribute("aria-hidden", "true");
+    state.sectionToneEditor = null;
+  }
+
+  function saveSectionToneFromEditor(form) {
+    if (!requireOwner("保存板块描述")) return;
+    if (!state.sectionToneEditor) return;
+    const section = getSection(state.sectionToneEditor.sectionId);
+    if (!section) return;
+    section.tone = form.tone.value.trim();
+    if (!saveContent()) return;
+    closeSectionToneEditor();
+    rerenderEditableArea();
+  }
+
   function deleteSection(sectionId) {
     if (!requireOwner("删除板块")) return;
     const section = getSection(sectionId);
@@ -2026,6 +2088,7 @@
       const pinOpen = event.target.closest("[data-pin-open]");
       const imageButton = event.target.closest("[data-image-step][data-image-slot]");
       const manageImagesButton = event.target.closest("[data-manage-images]");
+      const editSectionToneButton = event.target.closest("[data-edit-section-tone]");
       const editSectionButton = event.target.closest("[data-edit-section]");
       const deleteSectionButton = event.target.closest("[data-delete-section]");
 
@@ -2035,6 +2098,10 @@
       }
       if (manageImagesButton) {
         openImageManager(manageImagesButton.dataset.manageImages, manageImagesButton.dataset.manageTitle || "卡片图片");
+        return;
+      }
+      if (editSectionToneButton) {
+        openSectionToneEditor(editSectionToneButton.dataset.editSectionTone);
         return;
       }
       if (editSectionButton) {
@@ -2083,6 +2150,7 @@
       if (event.target.closest("[data-add-qa]")) openQaEditor(null);
       if (event.target.closest("[data-close-editor]")) closeCardEditor();
       if (event.target.closest("[data-close-qa-editor]")) closeQaEditor();
+      if (event.target.closest("[data-close-section-tone-editor]")) closeSectionToneEditor();
       if (event.target.closest("[data-close-image-manager]")) closeImageManager();
       if (event.target.closest("[data-image-viewer-close]")) closeImageViewer();
       const editQa = event.target.closest("[data-edit-qa]");
@@ -2115,6 +2183,8 @@
       if (editor && event.target === editor) closeCardEditor();
       const qaEditor = $("#qaEditor");
       if (qaEditor && event.target === qaEditor) closeQaEditor();
+      const sectionToneEditor = $("#sectionToneEditor");
+      if (sectionToneEditor && event.target === sectionToneEditor) closeSectionToneEditor();
       const manager = $("#imageManager");
       if (manager && event.target === manager) closeImageManager();
       if (event.target.closest("[data-manager-add-images]")) addImagesFromManager();
@@ -2137,6 +2207,10 @@
       if (event.target.matches("#qaEditorForm")) {
         event.preventDefault();
         saveQaFromEditor(event.target);
+      }
+      if (event.target.matches("#sectionToneEditorForm")) {
+        event.preventDefault();
+        saveSectionToneFromEditor(event.target);
       }
     });
 
