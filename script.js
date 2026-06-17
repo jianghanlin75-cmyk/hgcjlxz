@@ -26,7 +26,8 @@
       enabled: false,
       imageStacks: {},
       saveTimer: null,
-      lastErrorAt: 0
+      lastErrorAt: 0,
+      imageNoticeAt: 0
     },
     activeImageIndex: {},
     ownerUnlocked: safeSessionGet(ownerSessionKey) === "true"
@@ -267,16 +268,31 @@
     }
   }
 
+  function cloudSafeImageValue(value) {
+    const images = normalizeConfiguredImages(value, { cloudOnly: true });
+    return Array.isArray(value) ? images : (images[0] || "");
+  }
+
+  function cloudSafeContent() {
+    return {
+      version: CONTENT_VERSION,
+      sections: state.content.sections.map((section) => ({
+        ...section,
+        items: (section.items || []).map((item) => ({
+          ...item,
+          image: cloudSafeImageValue(item.image)
+        }))
+      })),
+      qas: state.content.qas || [],
+      settings: state.content.settings || {},
+      pins: state.content.pins || {}
+    };
+  }
+
   function cloudStatePayload() {
     return {
-      content: {
-        version: CONTENT_VERSION,
-        sections: state.content.sections,
-        qas: state.content.qas || [],
-        settings: state.content.settings || {},
-        pins: state.content.pins || {}
-      },
-      imageStacks: state.cloud.imageStacks || {}
+      content: cloudSafeContent(),
+      imageStacks: cloudSafeImageStacks()
     };
   }
 
@@ -388,7 +404,8 @@
       return false;
     }
     setOwnerUnlocked(true);
-    alert("已进入开发者权限。现在可以编辑、上传图片、隐藏/恢复卡片、导入导出备份。\n\n提醒：这个静态版口令只适合本地防误触，不等于真正云端后台账号。");
+    const migratedMapKey = migrateLocalAmapCredentials();
+    alert(`已进入开发者权限。现在可以编辑、上传图片、隐藏/恢复卡片、导入导出备份。${migratedMapKey ? "\n\n已把这个浏览器里的高德 Key 自动迁移到云端 settings，等待同步后手机/无痕也能读取。" : ""}\n\n提醒：这个静态版口令只适合本地防误触，不等于真正云端后台账号。`);
     return true;
   }
 
@@ -423,42 +440,94 @@
     return element ? element.label : "未分配";
   }
 
-  function normalizeConfiguredImages(configured) {
-    if (Array.isArray(configured)) return configured.filter(Boolean);
-    return configured ? [configured] : [];
+  function isDataImageSrc(src) {
+    return /^data:image\//i.test(String(src || "").trim());
   }
 
-  function getImages(slot, configured) {
-    if (state.cloud.enabled && state.cloud.imageStacks && Array.isArray(state.cloud.imageStacks[slot])) {
-      return state.cloud.imageStacks[slot].filter(Boolean);
-    }
+  function isBlobImageSrc(src) {
+    return /^blob:/i.test(String(src || "").trim());
+  }
+
+  function isCloudSafeImageSrc(src) {
+    const value = String(src || "").trim();
+    return Boolean(value) && !isDataImageSrc(value) && !isBlobImageSrc(value);
+  }
+
+  function dedupeImageList(images) {
+    const seen = new Set();
+    const clean = [];
+    (Array.isArray(images) ? images : []).forEach((src) => {
+      const value = String(src || "").trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+      clean.push(value);
+    });
+    return clean.slice(-MAX_IMAGES_PER_SLOT);
+  }
+
+  function normalizeConfiguredImages(configured, options = {}) {
+    const list = Array.isArray(configured) ? configured : (configured ? [configured] : []);
+    const clean = dedupeImageList(list);
+    return options.cloudOnly ? clean.filter(isCloudSafeImageSrc) : clean;
+  }
+
+  function getCloudImageStack(slot) {
+    if (!state.cloud.enabled || !state.cloud.imageStacks || !Array.isArray(state.cloud.imageStacks[slot])) return [];
+    return normalizeConfiguredImages(state.cloud.imageStacks[slot], { cloudOnly: true });
+  }
+
+  function getLocalImageStack(slot) {
     try {
       const saved = JSON.parse(localStorage.getItem(imageListStorageKey(slot)) || "null");
-      if (Array.isArray(saved)) return saved.filter(Boolean);
+      if (Array.isArray(saved)) return dedupeImageList(saved);
     } catch (error) {
       console.warn("Image stack storage could not be read.", error);
     }
-    const legacy = localStorage.getItem(storageKey(slot));
-    return legacy ? [legacy] : normalizeConfiguredImages(configured);
+    try {
+      const legacy = localStorage.getItem(storageKey(slot));
+      return legacy ? [legacy] : [];
+    } catch (error) {
+      console.warn("Legacy image storage could not be read.", error);
+      return [];
+    }
+  }
+
+  function getImages(slot, configured) {
+    return dedupeImageList([
+      ...normalizeConfiguredImages(configured),
+      ...getCloudImageStack(slot),
+      ...getLocalImageStack(slot)
+    ]);
+  }
+
+  function cloudSafeImageStacks() {
+    const stacks = {};
+    Object.entries(state.cloud.imageStacks || {}).forEach(([slot, images]) => {
+      const clean = normalizeConfiguredImages(images, { cloudOnly: true });
+      if (clean.length) stacks[slot] = clean;
+    });
+    return stacks;
   }
 
   function saveImages(slot, images) {
-    const clean = images.filter(Boolean).slice(-MAX_IMAGES_PER_SLOT);
+    const clean = dedupeImageList(images);
+    const cloudSafe = clean.filter(isCloudSafeImageSrc);
+
     if (state.cloud.enabled) {
-      state.cloud.imageStacks[slot] = clean;
-      scheduleCloudSave();
+      const before = JSON.stringify(normalizeConfiguredImages(state.cloud.imageStacks[slot], { cloudOnly: true }));
+      if (cloudSafe.length) state.cloud.imageStacks[slot] = cloudSafe;
+      else delete state.cloud.imageStacks[slot];
+      if (before !== JSON.stringify(cloudSafe)) scheduleCloudSave();
     }
 
     // 只保存多图列表，不再重复保存 hbeu-image-xxx 首图。
-    // 旧版同时保存“多图列表 + 首图副本”，会把 localStorage 空间吃得很快，
-    // 用户上传几次图片后就会出现“浏览器本地存储满了”。
+    // 关键修复：data:image/base64 只留在本机 localStorage，不再写入 D1 imageStacks，避免撑爆 /api/content。
+    // 真正跨浏览器、手机可见的图片，请放到 assets/images 后在“管图”里添加静态路径。
     safeRemoveItem(storageKey(slot));
     safeRemoveItem(imageListStorageKey(slot));
 
-    const ok = safeSetItem(imageListStorageKey(slot), JSON.stringify(clean), "图片");
-    if (!ok) return false;
-    if (!clean.length) safeRemoveItem(imageListStorageKey(slot));
-    return true;
+    if (!clean.length) return true;
+    return safeSetItem(imageListStorageKey(slot), JSON.stringify(clean), "图片");
   }
 
   function getImage(slot, configured) {
@@ -812,8 +881,8 @@
     slotList.innerHTML = `
       <div class="lab-tools owner-only">
         <div>
-          <strong>本地图片缓存</strong>
-          <small>当前记录约 ${totalImages} 张图。上传失败时，先导出备份，再清理缓存。</small>
+          <strong>图片记录</strong>
+          <small>当前记录约 ${totalImages} 张图。assets/images 静态路径可同步；电脑上传图只在本浏览器临时显示。</small>
         </div>
         <button class="upload-mini danger" type="button" data-clear-image-cache>
           ${icon("trash-2")}
@@ -1048,14 +1117,7 @@
       console.warn("Image compression failed; using original files.", error);
       incoming = await Promise.all(imageFiles.map(readFileAsDataUrl));
     }
-    if (state.cloud.enabled) {
-      const uploaded = await uploadImagesToCloud(slot, incoming);
-      if (Array.isArray(uploaded) && uploaded.length === incoming.length) {
-        incoming = uploaded;
-      } else {
-        notifyImageFallback();
-      }
-    }
+    notifyImageFallback();
     const combined = existing.concat(incoming);
     const nextImages = combined.slice(-MAX_IMAGES_PER_SLOT);
     const trimmed = combined.length - nextImages.length;
@@ -1072,32 +1134,16 @@
 
   function notifyImageFallback() {
     const now = Date.now();
-    if (now - state.cloud.lastErrorAt < 1800) return;
-    state.cloud.lastErrorAt = now;
-    alert("当前没有可用的 R2 图片云存储，已自动改用“压缩小图保存模式”。\n\n本次图片会继续加入卡片，不会停止加图。\n但不要一次上传大量图片；建议每个卡片 2～4 张精选图。文字内容云同步不受影响。");
+    if (now - state.cloud.imageNoticeAt < 12000) return;
+    state.cloud.imageNoticeAt = now;
+    alert("当前是无 R2 图片模式。\n\n你从电脑上传的图片会被压缩后继续加入卡片，但只保存在当前浏览器，不能保证换浏览器或手机可见，也不会再写进 D1。\n\n要让图片跨浏览器/手机稳定显示：把图片放到仓库 assets/images/ 里，然后点“管图” -> “添加静态路径”，例如 assets/images/food/canteen-01.jpg。");
   }
 
   async function uploadImagesToCloud(slot, dataUrls) {
-    const uploaded = [];
-    for (const dataUrl of dataUrls) {
-      try {
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-admin-token": getOwnerToken()
-          },
-          body: JSON.stringify({ slot, dataUrl })
-        });
-        if (!response.ok) throw new Error(`Image upload failed: ${response.status}`);
-        const payload = await response.json();
-        if (payload && payload.url) uploaded.push(payload.url);
-      } catch (error) {
-        console.warn("Image cloud upload is unavailable; falling back to compressed data URLs.", error);
-        return null;
-      }
-    }
-    return uploaded;
+    // 当前项目没有 R2，前端不再强制调用 /api/upload。
+    // 保留这个函数只是为了以后真的绑定 R2 时便于恢复，不影响现有无 R2 方案。
+    console.info("R2 upload is disabled for no-R2 mode.", slot, dataUrls.length);
+    return null;
   }
 
   function wireLabUploads() {
@@ -1254,6 +1300,24 @@
         `).join("")}
       </div>
     `;
+  }
+
+  function migrateLocalAmapCredentials() {
+    if (!state.content) return false;
+    const settings = state.content.settings && state.content.settings.amap ? state.content.settings.amap : {};
+    let localKey = "";
+    let localSecurity = "";
+    try {
+      localKey = localStorage.getItem(amapKeyStorageKey) || "";
+      localSecurity = localStorage.getItem(amapSecurityStorageKey) || "";
+    } catch (error) {
+      return false;
+    }
+    if (!localKey || settings.key) return false;
+    if (!state.content.settings || typeof state.content.settings !== "object") state.content.settings = {};
+    state.content.settings.amap = { key: localKey.trim(), securityJsCode: localSecurity.trim() };
+    saveContent();
+    return true;
   }
 
   function getAmapCredentials() {
@@ -1791,7 +1855,7 @@
 
   function clearLocalImageCache() {
     if (!requireOwner("清空本地图片缓存")) return;
-    const ok = confirm("清空本地图片缓存会删除这个浏览器里所有已上传图片。\n\n建议你先点右上角“导出备份”。如果已经因为存储满了无法继续上传，可以清空后重新上传图片。\n\n确定清空吗？");
+    const ok = confirm("清空本地图片缓存会删除这个浏览器里临时保存的 data:image 图片。\n\n它不会删除已同步到云端的 assets/images 静态路径，也不会删除卡片文字、元素、点位。\n\n确定清空吗？");
     if (!ok) return;
     try {
       const keys = [];
@@ -1802,7 +1866,7 @@
       keys.forEach((key) => localStorage.removeItem(key));
       state.activeImageIndex = {};
       rerenderEditableArea();
-      alert("本地图片缓存已清空。现在可以重新上传图片。\n\n注意：卡片文字、元素、点位没有被清空。只清空了浏览器里存的图片。");
+      alert("本地临时图片缓存已清空。\n\n注意：卡片文字、元素、点位、已同步的静态图片路径都没有被清空。");
     } catch (error) {
       console.warn("Image cache cleanup failed.", error);
       alert("清理失败。请按我给你的浏览器清理步骤，在浏览器设置里清理这个网站的数据。");
@@ -1811,9 +1875,8 @@
 
   function clearSlotImages(slot, title) {
     if (!requireOwner("清理这个图片槽")) return;
-    if (!confirm(`清空「${title || slot}」这个图片槽里的图片？\n\n只会删除这个槽位的图片，不会删除卡片文字。`)) return;
-    safeRemoveItem(imageListStorageKey(slot));
-    safeRemoveItem(storageKey(slot));
+    if (!confirm(`清空「${title || slot}」这个图片槽里的图片？\n\n会删除这个槽位的本机临时图片和已同步静态路径，但不会删除卡片文字。`)) return;
+    saveImages(slot, []);
     delete state.activeImageIndex[slot];
     rerenderEditableArea();
   }
@@ -1857,22 +1920,22 @@
           alert("这个文件不是有效的网站备份 JSON。");
           return;
         }
-        if (!confirm("导入备份会覆盖当前浏览器里的卡片、图片和点位。确定继续？")) return;
-        const contentOk = safeSetItem(contentStorageKey, JSON.stringify({
-          version: CONTENT_VERSION,
-          sections: backup.content.sections,
-          qas: Array.isArray(backup.content.qas) ? backup.content.qas : (Array.isArray(backup.qas) ? backup.qas : [])
-        }), "备份内容");
-        if (!contentOk) return;
+        if (!confirm("导入备份会覆盖当前卡片、图片路径和点位。确定继续？")) return;
+
+        state.content = {
+          sections: backup.content.sections.map(normalizeSection),
+          qas: Array.isArray(backup.content.qas) ? backup.content.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : (Array.isArray(backup.qas) ? backup.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []),
+          settings: backup.content.settings && typeof backup.content.settings === "object" ? backup.content.settings : {},
+          pins: backup.content.pins && typeof backup.content.pins === "object" ? backup.content.pins : (backup.pins && typeof backup.pins === "object" ? backup.pins : {})
+        };
+
         Object.entries(backup.imageStacks || {}).forEach(([slot, images]) => {
           if (Array.isArray(images)) saveImages(slot, images);
         });
-        Object.entries(backup.pins || {}).forEach(([sectionId, pins]) => {
-          if (Array.isArray(pins)) savePins(sectionId, pins);
-        });
-        state.content = loadContent();
+
+        if (!saveContent()) return;
         rerenderEditableArea();
-        alert("备份导入完成。建议马上刷新页面检查一次。");
+        alert("备份导入完成。静态图片路径会同步到云端；备份里如果有 data:image 图片，只会保留在当前浏览器。");
       } catch (error) {
         console.warn("Backup import failed.", error);
         alert("导入失败：JSON 文件格式不正确，或文件内容过大。");
@@ -1893,9 +1956,10 @@
             </div>
             <button class="icon-button" type="button" data-close-image-manager aria-label="关闭图片编辑器">${icon("x")}</button>
           </div>
-          <p class="lab-copy">这里可以单张删除图片、调整顺序、把某张设为封面，也可以继续追加图片。第一张图片就是卡片封面。</p>
+          <p class="lab-copy">这里可以单张删除图片、调整顺序、把某张设为封面。跨浏览器/手机稳定显示，请优先把图片放进 <code>assets/images</code>，再添加静态路径。</p>
           <div class="image-manager-tools">
-            <button class="tool-button" type="button" data-manager-add-images>${icon("image-plus")}<span>继续加图</span></button>
+            <button class="tool-button" type="button" data-manager-add-paths>${icon("link")}<span>添加静态路径</span></button>
+            <button class="tool-button ghost" type="button" data-manager-add-images>${icon("image-plus")}<span>本机临时加图</span></button>
             <button class="tool-button danger" type="button" data-manager-clear-images>${icon("eraser")}<span>清空本卡图片</span></button>
           </div>
           <div class="image-manager-list" id="imageManagerList"></div>
@@ -1935,7 +1999,7 @@
       list.innerHTML = `
         <div class="image-manager-empty">
           <strong>这个卡片还没有图片。</strong>
-          <span>点上面的“继续加图”，选择电脑里的图片即可。</span>
+          <span>推荐点“添加静态路径”，例如 assets/images/food/canteen-01.jpg；“本机临时加图”只在当前浏览器显示。</span>
         </div>
       `;
       refreshIcons();
@@ -1946,7 +2010,7 @@
         <div class="manager-thumb" style="background-image:url('${escapeHtml(src)}')"></div>
         <div class="manager-info">
           <strong>${index === 0 ? "封面图片" : `第 ${index + 1} 张`}</strong>
-          <small>${index + 1}/${images.length}</small>
+          <small>${index + 1}/${images.length} · ${isCloudSafeImageSrc(src) ? "静态路径/可同步" : "本机临时"}</small>
         </div>
         <div class="manager-actions">
           <button class="upload-mini ghost" type="button" data-manager-cover="${index}" ${index === 0 ? "disabled" : ""}>${icon("star")}<span>设封面</span></button>
@@ -1974,6 +2038,31 @@
       manager.setAttribute("aria-hidden", "false");
     }
     return true;
+  }
+
+  function parseImagePathInput(value) {
+    return dedupeImageList(String(value || "")
+      .split(/[\r\n,]+/)
+      .map((item) => item.trim().replace(/^['"]|['"]$/g, ""))
+      .filter(isCloudSafeImageSrc));
+  }
+
+  function addStaticImagePathsFromManager() {
+    if (!state.imageManager || !requireOwner("添加静态图片路径")) return;
+    const { slot, title } = state.imageManager;
+    const text = prompt(`给「${title}」添加静态图片路径，每行一张。\n\n例：assets/images/food/canteen-01.jpg\n也可以用 https:// 开头的外链图片。\n\n注意：这里不要粘贴 data:image/base64。`, "assets/images/");
+    if (text === null) return;
+    const paths = parseImagePathInput(text);
+    if (!paths.length) {
+      alert("没有识别到有效图片路径。请填写 assets/images/... 或 https://...，不要粘贴 base64。");
+      return;
+    }
+    const before = getImages(slot, "");
+    const next = dedupeImageList(before.concat(paths));
+    const trimmed = before.length + paths.length - next.length;
+    if (!saveManagedImages(next, Math.max(0, next.length - paths.length))) return;
+    if (trimmed > 0) alert(`这个图片槽最多保留 ${MAX_IMAGES_PER_SLOT} 张，已自动去重或移除最早的 ${trimmed} 张。`);
+    else alert("静态图片路径已加入。云端同步成功后，换浏览器和手机也能看到。");
   }
 
   function addImagesFromManager() {
@@ -2222,6 +2311,7 @@
       if (sectionToneEditor && event.target === sectionToneEditor) closeSectionToneEditor();
       const manager = $("#imageManager");
       if (manager && event.target === manager) closeImageManager();
+      if (event.target.closest("[data-manager-add-paths]")) addStaticImagePathsFromManager();
       if (event.target.closest("[data-manager-add-images]")) addImagesFromManager();
       if (event.target.closest("[data-manager-clear-images]")) clearManagedImages();
       const deleteManaged = event.target.closest("[data-manager-delete]");
@@ -2465,6 +2555,7 @@
   async function init() {
     state.content = loadContent();
     await loadCloudState();
+    if (state.ownerUnlocked) migrateLocalAmapCredentials();
     cleanupDuplicateLegacyImageStorage();
     buildRoutes();
     buildNavigation();

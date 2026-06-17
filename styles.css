@@ -2573,3 +2573,125 @@ body {
     min-height: 210px;
   }
 }
+
+/* === 2026-06 no-R2 static image path + mobile hardening patch === */
+.image-manager-list small {
+  overflow-wrap: anywhere;
+}
+
+.image-manager-tools .tool-button {
+  white-space: normal;
+}
+
+.manager-info {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    min-height: 64px;
+    height: auto;
+    padding: 8px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .brand {
+    max-width: calc(100vw - 150px);
+  }
+
+  .brand strong {
+    max-width: 8.5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .top-actions {
+    margin-left: auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+
+  .top-actions .owner-button {
+    min-height: 38px;
+    padding: 0 10px;
+  }
+
+  .top-actions .owner-button span,
+  .top-actions .icon-button[title="切换动效"] {
+    display: none;
+  }
+
+  .hero {
+    padding-top: 96px;
+  }
+
+  .module-top,
+  .map-head,
+  .element-tools,
+  .slot-row {
+    min-width: 0;
+  }
+
+  .map-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .map-actions,
+  .slot-actions,
+  .manager-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .place-card {
+    min-height: 0;
+  }
+
+  .card-body {
+    min-width: 0;
+  }
+
+  .image-manager-panel,
+  .content-editor-panel,
+  .image-lab-panel {
+    max-width: calc(100vw - 20px);
+  }
+
+  .image-viewer-toolbar {
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (max-width: 420px) {
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+  }
+
+  .top-actions .icon-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  .module-panel {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .satellite-card {
+    padding: 10px;
+  }
+
+  .pin-row {
+    grid-template-columns: 22px minmax(0, 1fr) 32px;
+  }
+
+  .image-nav {
+    width: 34px;
+    height: 34px;
+  }
+}
