@@ -377,17 +377,58 @@
     refreshIcons();
   }
 
-  function unlockOwner() {
-    let saved = localStorage.getItem(ownerPasscodeKey) || "";
+  async function verifyOwnerToken(token) {
+    if (!state.cloud.enabled) return { ok: true, offline: true };
+    try {
+      const response = await fetch("/api/verify", {
+        method: "GET",
+        headers: { "x-admin-token": token, "accept": "application/json" },
+        cache: "no-store"
+      });
+      if (response.ok) return { ok: true };
+      return { ok: false, status: response.status };
+    } catch (error) {
+      console.warn("Developer token verification failed.", error);
+      return { ok: false, network: true };
+    }
+  }
+
+  async function unlockOwner() {
+    let saved = "";
+    try {
+      saved = localStorage.getItem(ownerPasscodeKey) || "";
+    } catch (error) {
+      saved = "";
+    }
+
+    if (state.cloud.enabled) {
+      const input = prompt("请输入开发者口令（也就是 Cloudflare Pages 里设置的 ADMIN_TOKEN）。\n\n说明：不同浏览器的本地保存互不相通，所以换浏览器第一次进入时需要重新输入一次；不是重新设置。", saved ? saved : "");
+      if (input === null) return false;
+      const token = input.trim();
+      if (!token) return false;
+      const check = await verifyOwnerToken(token);
+      if (!check.ok) {
+        alert(check.network
+          ? "暂时无法连接云端验证开发者口令。请检查网络或稍后再试。"
+          : "开发者口令不正确，或 Cloudflare Pages 的 ADMIN_TOKEN 与输入内容不一致。页面保持访客浏览模式。");
+        return false;
+      }
+      if (!safeSetItem(ownerPasscodeKey, token, "开发者口令")) return false;
+      setOwnerUnlocked(true);
+      const migratedMapKey = migrateLocalAmapCredentials();
+      alert(`已进入开发者权限。现在可以编辑、上传图片、隐藏/恢复卡片、导入导出备份。${migratedMapKey ? "\n\n已把这个浏览器里的高德 Key 自动迁移到云端 settings，等待同步后手机/无痕也能读取。" : ""}`);
+      return true;
+    }
+
     if (!saved) {
-      const pass = prompt("第一次使用开发者权限，请设置一个开发者口令。以后只有输入这个口令，才能编辑、上传、隐藏卡片。\n\n请不要设置太复杂，先记在纸上。", "");
+      const pass = prompt("当前云端同步不可用。请设置一个仅保存在本浏览器里的临时开发者口令。", "");
       if (pass === null) return false;
       const trimmed = pass.trim();
       if (trimmed.length < 4) {
         alert("开发者口令至少 4 个字符。请重新点击“开发者权限”设置。");
         return false;
       }
-      const again = prompt("请再输入一次主人口令，防止输错。", "");
+      const again = prompt("请再输入一次开发者口令，防止输错。", "");
       if (again === null) return false;
       if (again.trim() !== trimmed) {
         alert("两次输入不一致。请重新点击“开发者权限”设置。");
@@ -404,12 +445,11 @@
       return false;
     }
     setOwnerUnlocked(true);
-    const migratedMapKey = migrateLocalAmapCredentials();
-    alert(`已进入开发者权限。现在可以编辑、上传图片、隐藏/恢复卡片、导入导出备份。${migratedMapKey ? "\n\n已把这个浏览器里的高德 Key 自动迁移到云端 settings，等待同步后手机/无痕也能读取。" : ""}\n\n提醒：这个静态版口令只适合本地防误触，不等于真正云端后台账号。`);
+    alert("已进入开发者权限。当前为离线/本地权限模式，云端保存需要 /api/content 和 ADMIN_TOKEN 正常。");
     return true;
   }
 
-  function toggleOwnerMode() {
+  async function toggleOwnerMode() {
     if (state.ownerUnlocked) {
       setOwnerUnlocked(false);
       closeCardEditor();
@@ -418,7 +458,7 @@
       alert("已退出开发者权限。现在是访客浏览模式。");
       return;
     }
-    unlockOwner();
+    await unlockOwner();
   }
 
   function requireOwner(actionName = "这个操作") {
@@ -1362,18 +1402,23 @@
   function ensureAmapLoader() {
     if (window.AMapLoader) return Promise.resolve(window.AMapLoader);
     return new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-amap-loader="true"]');
+      const done = () => {
+        if (window.AMapLoader) resolve(window.AMapLoader);
+        else reject(new Error("AMapLoader script loaded but window.AMapLoader is missing."));
+      };
+      const existing = document.querySelector('script[src*="webapi.amap.com/loader.js"], script[data-amap-loader="true"]');
       if (existing) {
-        existing.addEventListener("load", () => resolve(window.AMapLoader));
-        existing.addEventListener("error", reject);
+        existing.addEventListener("load", done, { once: true });
+        existing.addEventListener("error", () => reject(new Error("AMap loader script failed to load.")), { once: true });
+        setTimeout(done, 1200);
         return;
       }
       const script = document.createElement("script");
       script.src = "https://webapi.amap.com/loader.js";
       script.async = true;
       script.dataset.amapLoader = "true";
-      script.addEventListener("load", () => resolve(window.AMapLoader));
-      script.addEventListener("error", reject);
+      script.addEventListener("load", done, { once: true });
+      script.addEventListener("error", () => reject(new Error("AMap loader script failed to load.")), { once: true });
       document.head.appendChild(script);
     });
   }
@@ -1394,20 +1439,28 @@
     const credentials = getAmapCredentials();
     destroyMaps();
     if (!credentials.key) {
-      showMapNotice("当前未设置高德地图 Key。");
+      showMapNotice("当前未设置高德地图 Key。进入开发者权限后点“设置 Key”，保存到云端后换浏览器/手机才会显示。");
       return;
     }
     if (credentials.securityJsCode) {
       window._AMapSecurityConfig = { securityJsCode: credentials.securityJsCode };
     }
 
-    if (!state.amapLoading || forceReload) {
+    if (forceReload) {
+      state.amapLoading = null;
+      state.AMap = null;
+    }
+
+    if (!state.amapLoading) {
       state.amapLoading = ensureAmapLoader()
-        .then((loader) => loader.load({
-          key: credentials.key,
-          version: mapConfig.version || "2.0",
-          plugins: ["AMap.Scale", "AMap.ToolBar"]
-        }))
+        .then((loader) => {
+          if (!loader || typeof loader.load !== "function") throw new Error("AMapLoader.load is unavailable.");
+          return loader.load({
+            key: credentials.key,
+            version: mapConfig.version || "2.0",
+            plugins: ["AMap.Scale", "AMap.ToolBar"]
+          });
+        })
         .then((AMap) => {
           state.AMap = AMap;
           return AMap;
@@ -1420,7 +1473,7 @@
       })
       .catch((error) => {
         console.warn("AMap could not be loaded.", error);
-        showMapNotice("高德地图加载失败，请检查 Key、网络或安全密钥。");
+        showMapNotice("高德地图加载失败。请检查：Key 类型是否为 Web端 JS API、securityJsCode 是否填写、域名白名单是否包含 hgcjlxz.pages.dev、当前浏览器是否能访问高德地图脚本。");
       });
   }
 
@@ -1430,22 +1483,33 @@
     if (!mapEl) return;
     mapEl.innerHTML = "";
     const center = mapConfig.center || [113.920343, 30.936542];
-    const satellite = new AMap.TileLayer.Satellite();
-    const roadNet = new AMap.TileLayer.RoadNet();
-    const map = new AMap.Map(mapEl, {
-      viewMode: mapConfig.viewMode || "2D",
-      zoom: mapConfig.zoom || 16,
-      center,
-      resizeEnable: true,
-      mapStyle: mapConfig.mapStyle || "amap://styles/normal",
-      layers: [satellite, roadNet]
-    });
+    let map;
+    try {
+      // 这里不要强制卫星图层。部分浏览器/网络能加载控件但拉不到卫星瓦片，会出现“有缩放按钮但底图白屏”。
+      // 使用高德默认矢量底图最稳定，点位功能不受影响。
+      map = new AMap.Map(mapEl, {
+        viewMode: mapConfig.viewMode || "2D",
+        zoom: mapConfig.zoom || 16,
+        center,
+        resizeEnable: true,
+        mapStyle: mapConfig.mapStyle || "amap://styles/normal"
+      });
+    } catch (error) {
+      console.warn("AMap section map could not be initialized.", error);
+      mapEl.innerHTML = `<div class="map-notice"><strong>这个地图容器初始化失败，请检查高德 Key 和浏览器兼容性。</strong></div>`;
+      return;
+    }
 
-    map.addControl(new AMap.Scale());
-    map.addControl(new AMap.ToolBar({ position: "RT" }));
+    try { map.addControl(new AMap.Scale()); } catch (error) { console.warn("AMap scale control failed.", error); }
+    try { map.addControl(new AMap.ToolBar({ position: "RT" })); } catch (error) { console.warn("AMap toolbar control failed.", error); }
     map.on("click", (event) => {
       if (!state.ownerUnlocked) return;
       placePin(section.id, [event.lnglat.getLng(), event.lnglat.getLat()]);
+    });
+    map.on("complete", () => {
+      setTimeout(() => {
+        if (map && typeof map.resize === "function") map.resize();
+      }, 80);
     });
 
     state.maps[section.id] = map;
