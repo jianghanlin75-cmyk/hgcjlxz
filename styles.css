@@ -2495,3 +2495,81 @@ body::after {
   background-size: 380px 240px;
   opacity: .75;
 }
+
+/* === 2026-06 mobile safety patch: reduce overflow and keep watermark subtle on phones === */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.module-panel,
+.content-card,
+.qa-card,
+.route-card {
+  min-width: 0;
+}
+
+.section-admin,
+.panel-tools,
+.tool-actions,
+.map-actions,
+.qa-actions {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 540px) {
+  body::after {
+    opacity: .42;
+    background-size: 320px 210px;
+  }
+
+  .hero {
+    min-height: auto;
+    padding-top: 92px;
+    padding-bottom: 42px;
+  }
+
+  .hero h1 {
+    font-size: clamp(2rem, 14vw, 2.55rem);
+    line-height: .95;
+    overflow-wrap: anywhere;
+  }
+
+  .route-strip,
+  .modules {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .module-panel {
+    padding: 20px 14px;
+    border-radius: 24px;
+  }
+
+  .module-rail {
+    margin-left: -14px;
+    margin-right: -14px;
+  }
+
+  .section-admin .tool-button,
+  .panel-tools .tool-button,
+  .upload-mini {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .satellite-map {
+    height: 320px;
+    min-height: 320px;
+  }
+
+  .content-card {
+    padding: 16px;
+  }
+
+  .image-stack,
+  .card-image {
+    min-height: 210px;
+  }
+}

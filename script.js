@@ -3,14 +3,15 @@
   const CONTENT_VERSION = "editable-v3";
   const ownerPasscodeKey = "hbeu-owner-passcode-v1";
   const ownerSessionKey = "hbeu-owner-unlocked";
-  const MAX_IMAGES_PER_SLOT = 6;
-  const IMAGE_MAX_SIDE = 1080;
-  const IMAGE_QUALITY = 0.72;
+  const MAX_IMAGES_PER_SLOT = 4;
+  const IMAGE_MAX_SIDE = 720;
+  const IMAGE_QUALITY = 0.55;
   let lastStorageErrorAt = 0;
   const state = {
     activeSection: data.sections[0].id,
     sectionFilters: {},
     activeMapElement: {},
+    mapPins: {},
     maps: {},
     markers: {},
     motion: localStorage.getItem("hbeu-motion") !== "off",
@@ -202,7 +203,9 @@
       if (saved && saved.version === CONTENT_VERSION && Array.isArray(saved.sections)) {
         return {
           sections: saved.sections.map(normalizeSection),
-          qas: Array.isArray(saved.qas) ? saved.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []
+          qas: Array.isArray(saved.qas) ? saved.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : [],
+          settings: saved.settings && typeof saved.settings === "object" ? saved.settings : {},
+          pins: saved.pins && typeof saved.pins === "object" ? saved.pins : {}
         };
       }
     } catch (error) {
@@ -210,7 +213,9 @@
     }
     return {
       sections: data.sections.map(normalizeSection),
-      qas: Array.isArray(data.qas) ? data.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []
+      qas: Array.isArray(data.qas) ? data.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : [],
+      settings: {},
+      pins: {}
     };
   }
 
@@ -246,7 +251,9 @@
     const ok = safeSetItem(contentStorageKey, JSON.stringify({
       version: CONTENT_VERSION,
       sections: state.content.sections,
-      qas: state.content.qas || []
+      qas: state.content.qas || [],
+      settings: state.content.settings || {},
+      pins: state.content.pins || {}
     }), "网站内容");
     if (ok) scheduleCloudSave();
     return ok;
@@ -265,7 +272,9 @@
       content: {
         version: CONTENT_VERSION,
         sections: state.content.sections,
-        qas: state.content.qas || []
+        qas: state.content.qas || [],
+        settings: state.content.settings || {},
+        pins: state.content.pins || {}
       },
       imageStacks: state.cloud.imageStacks || {}
     };
@@ -276,7 +285,7 @@
     const now = Date.now();
     if (now - state.cloud.lastErrorAt < 1800) return;
     state.cloud.lastErrorAt = now;
-    alert(`${message}\n\n请确认 Cloudflare Pages 已绑定 D1、R2，并且环境变量 ADMIN_TOKEN 和你的主人口令一致。`);
+    alert(`${message}\n\n如果刚上传了很多图片，最常见原因是图片数据太大，云端暂时写不进去。当前改动只保存在这台设备的浏览器里；请先停止继续加图，删除多余大图或用更小图片重新上传。文字保存失败时，再检查 D1 和 ADMIN_TOKEN。`);
   }
 
   async function saveCloudState() {
@@ -315,7 +324,9 @@
       if (payload.content && Array.isArray(payload.content.sections)) {
         state.content = {
           sections: payload.content.sections.map(normalizeSection),
-          qas: Array.isArray(payload.content.qas) ? payload.content.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []
+          qas: Array.isArray(payload.content.qas) ? payload.content.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : [],
+          settings: payload.content.settings && typeof payload.content.settings === "object" ? payload.content.settings : {},
+          pins: payload.content.pins && typeof payload.content.pins === "object" ? payload.content.pins : {}
         };
       }
       document.body.classList.add("cloud-sync-enabled");
@@ -1014,8 +1025,8 @@
           canvas.height = height;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
-          const outputType = file.type === "image/png" && file.size < 450 * 1024 ? "image/png" : "image/jpeg";
-          resolve(canvas.toDataURL(outputType, outputType === "image/jpeg" ? IMAGE_QUALITY : undefined));
+          const outputType = "image/jpeg";
+          resolve(canvas.toDataURL(outputType, IMAGE_QUALITY));
         };
         img.onerror = reject;
         img.src = String(reader.result);
@@ -1108,6 +1119,9 @@
   }
 
   function loadPins(sectionId) {
+    if (state.content && state.content.pins && Array.isArray(state.content.pins[sectionId])) {
+      return state.content.pins[sectionId];
+    }
     try {
       const saved = JSON.parse(localStorage.getItem(pinStorageKey(sectionId)) || "null");
       if (Array.isArray(saved)) return saved;
@@ -1141,7 +1155,11 @@
   }
 
   function savePins(sectionId, pins) {
-    return safeSetItem(pinStorageKey(sectionId), JSON.stringify(pins), "地图点位");
+    const clean = Array.isArray(pins) ? pins : [];
+    if (!state.content.pins || typeof state.content.pins !== "object") state.content.pins = {};
+    state.content.pins[sectionId] = clean;
+    safeSetItem(pinStorageKey(sectionId), JSON.stringify(clean), "地图点位");
+    return saveContent();
   }
 
   function selectMapElement(sectionId, elementId) {
@@ -1240,9 +1258,10 @@
 
   function getAmapCredentials() {
     const config = data.university.campusMap || {};
+    const settings = state.content && state.content.settings && state.content.settings.amap ? state.content.settings.amap : {};
     return {
-      key: localStorage.getItem(amapKeyStorageKey) || config.apiKey || "",
-      securityJsCode: localStorage.getItem(amapSecurityStorageKey) || config.securityJsCode || ""
+      key: settings.key || localStorage.getItem(amapKeyStorageKey) || config.apiKey || "",
+      securityJsCode: settings.securityJsCode || localStorage.getItem(amapSecurityStorageKey) || config.securityJsCode || ""
     };
   }
 
@@ -1251,9 +1270,15 @@
     const current = getAmapCredentials();
     const key = prompt("粘贴高德 Web 端 JS API Key", current.key);
     if (key === null) return;
-    if (!safeSetItem(amapKeyStorageKey, key.trim(), "高德地图 Key")) return;
     const code = prompt("安全密钥 securityJsCode，可留空", current.securityJsCode);
-    if (code !== null && !safeSetItem(amapSecurityStorageKey, code.trim(), "高德地图安全密钥")) return;
+    if (code === null) return;
+    const next = { key: key.trim(), securityJsCode: code.trim() };
+    if (!state.content.settings || typeof state.content.settings !== "object") state.content.settings = {};
+    state.content.settings.amap = next;
+    safeSetItem(amapKeyStorageKey, next.key, "高德地图 Key");
+    safeSetItem(amapSecurityStorageKey, next.securityJsCode, "高德地图安全密钥");
+    saveContent();
+    alert("高德地图 Key 已保存。等云端同步成功后，无痕窗口和手机也会使用同一个地图配置。");
     initAmapMaps(true);
   }
 
@@ -1807,7 +1832,7 @@
       app: "hbeu-freshman-site",
       version: CONTENT_VERSION,
       exportedAt: new Date().toISOString(),
-      content: { version: CONTENT_VERSION, sections: state.content.sections, qas: getQas() },
+      content: { version: CONTENT_VERSION, sections: state.content.sections, qas: getQas(), settings: state.content.settings || {}, pins: state.content.pins || {} },
       imageStacks,
       pins
     };
