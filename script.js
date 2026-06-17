@@ -1039,8 +1039,11 @@
     }
     if (state.cloud.enabled) {
       const uploaded = await uploadImagesToCloud(slot, incoming);
-      if (uploaded.length) incoming = uploaded;
-      else return;
+      if (Array.isArray(uploaded) && uploaded.length === incoming.length) {
+        incoming = uploaded;
+      } else {
+        notifyImageFallback();
+      }
     }
     const combined = existing.concat(incoming);
     const nextImages = combined.slice(-MAX_IMAGES_PER_SLOT);
@@ -1054,6 +1057,13 @@
     }
     state.activeImageIndex[slot] = Math.max(0, nextImages.length - incoming.length);
     rerenderEditableArea();
+  }
+
+  function notifyImageFallback() {
+    const now = Date.now();
+    if (now - state.cloud.lastErrorAt < 1800) return;
+    state.cloud.lastErrorAt = now;
+    alert("当前没有可用的 R2 图片云存储，已自动改用“压缩小图保存模式”。\n\n本次图片会继续加入卡片，不会停止加图。\n但不要一次上传大量图片；建议每个卡片 2～4 张精选图。文字内容云同步不受影响。");
   }
 
   async function uploadImagesToCloud(slot, dataUrls) {
@@ -1072,8 +1082,8 @@
         const payload = await response.json();
         if (payload && payload.url) uploaded.push(payload.url);
       } catch (error) {
-        showCloudError("图片上传到云端失败，已停止本次加图。", error);
-        return uploaded;
+        console.warn("Image cloud upload is unavailable; falling back to compressed data URLs.", error);
+        return null;
       }
     }
     return uploaded;
