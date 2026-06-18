@@ -638,13 +638,9 @@ body:not(.owner-unlocked) .owner-only {
 }
 
 .module-rail {
-  position: fixed;
+  position: sticky;
   top: 96px;
-  left: 7vw;
-  width: 240px;
-  max-height: calc(100vh - 130px);
-  overflow-y: auto;
-  z-index: 15;
+  align-self: start;
   padding: 12px;
   border: 1px solid rgba(21, 23, 24, .14);
   background: rgba(255, 255, 255, .58);
@@ -2046,9 +2042,6 @@ body.owner-unlocked .place-card.is-hidden-card::before {
   .module-rail {
     position: sticky;
     top: 66px;
-    left: auto;
-    width: auto;
-    max-height: none;
     z-index: 20;
     margin: 0 -22px 26px;
     border-left: 0;
@@ -2514,6 +2507,13 @@ body::after {
 html,
 body {
   max-width: 100%;
+}
+
+html {
+  overflow-x: clip;
+}
+
+body {
   overflow-x: hidden;
 }
 

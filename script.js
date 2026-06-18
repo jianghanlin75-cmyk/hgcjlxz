@@ -1469,7 +1469,10 @@
 
     state.amapLoading
       .then((AMap) => {
-        state.content.sections.forEach((section) => initSectionMap(AMap, section));
+        // 延迟 map 初始化，确保 DOM 布局（尤其是首屏板块的容器尺寸）已就绪
+        setTimeout(() => {
+          state.content.sections.forEach((section) => initSectionMap(AMap, section));
+        }, 120);
       })
       .catch((error) => {
         console.warn("AMap could not be loaded.", error);
