@@ -382,6 +382,10 @@
     }
     setOwnerUnlocked(true);
     state.cloud.enabled = true;
+    // 拉取云端数据并刷新页面
+    loadCloudState().then(function (ok) {
+      if (ok) { rerenderEditableArea(); }
+    });
     return true;
   }
 
