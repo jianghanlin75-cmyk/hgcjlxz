@@ -49,7 +49,8 @@ export async function onRequestPut({ request, env }) {
   const payload = await request.json();
   const state = {
     content: payload.content || null,
-    imageStacks: payload.imageStacks || {}
+    imageStacks: payload.imageStacks || {},
+    pins: payload.pins || {}
   };
   await ensureSchema(env);
   await env.DB.prepare(`
