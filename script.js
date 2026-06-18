@@ -225,7 +225,7 @@
     const now = Date.now();
     if (now - lastStorageErrorAt < 1200) return;
     lastStorageErrorAt = now;
-    alert(`${label}保存失败。常见原因是浏览器本地存储已满、无痕模式限制存储，或直接双击 file:// 打开导致权限不稳定。\n\n建议：\n1. 先点右上角“导出备份”保存当前内容；\n2. 删除不必要的大图，或把图片放进 assets/images 后在 site-data.js 写路径；\n3. 用 python -m http.server 5500 打开网站；\n4. 长期使用请接入云数据库/对象存储，不能只依赖浏览器本地存储。`);
+    alert(`${label}保存失败。常见原因是浏览器本地存储已满、无痕模式限制存储，或直接双击 file:// 打开导致权限不稳定。\n\n建议：\n1. 先点右上角"导出备份"保存当前内容；\n2. 删除不必要的大图，或把图片放进 assets/images 后在 site-data.js 写路径；\n3. 用 python -m http.server 5500 打开网站；\n4. 长期使用请接入云数据库/对象存储，不能只依赖浏览器本地存储。`);
   }
 
   function safeSetItem(key, value, label) {
@@ -463,7 +463,7 @@
 
   function requireOwner(actionName = "这个操作") {
     if (state.ownerUnlocked) return true;
-    alert(`${actionName}需要先进入开发者权限。\n\n请点击右上角“开发者权限”按钮，输入开发者口令后再操作。`);
+    alert(`${actionName}需要先进入开发者权限。\n\n请点击右上角"开发者权限"按钮，输入开发者口令后再操作。`);
     return false;
   }
 
@@ -562,7 +562,7 @@
 
     // 只保存多图列表，不再重复保存 hbeu-image-xxx 首图。
     // 关键修复：data:image/base64 只留在本机 localStorage，不再写入 D1 imageStacks，避免撑爆 /api/content。
-    // 真正跨浏览器、手机可见的图片，请放到 assets/images 后在“管图”里添加静态路径。
+    // 真正跨浏览器、手机可见的图片，请放到 assets/images 后在"管图"里添加静态路径。
     safeRemoveItem(storageKey(slot));
     safeRemoveItem(imageListStorageKey(slot));
 
@@ -982,7 +982,7 @@
 
         // 重要：不要只依赖 HTML hidden 属性。
         // 这个项目里的 .place-card 原本写了 display:flex，浏览器默认的 [hidden]{display:none}
-        // 可能会被覆盖，结果就会变成“点一个元素，整个板块所有卡片都出现”。
+        // 可能会被覆盖，结果就会变成"点一个元素，整个板块所有卡片都出现"。
         // 所以这里同时使用 hidden 属性 + CSS 专用类，双保险保证元素和卡片一一对应显示。
         card.hidden = !visible;
         card.setAttribute('aria-hidden', String(!visible));
@@ -1488,40 +1488,40 @@
         requestAnimationFrame(doInit);
         return;
       }
-      mapEl.innerHTML = “”;
+      mapEl.innerHTML = "";
       const center = mapConfig.center || [113.920343, 30.936542];
       let map;
       try {
         map = new AMap.Map(mapEl, {
-          viewMode: mapConfig.viewMode || “2D”,
+          viewMode: mapConfig.viewMode || "2D",
           zoom: mapConfig.zoom || 16,
           center,
           resizeEnable: true,
-          mapStyle: mapConfig.mapStyle || “amap://styles/normal”
+          mapStyle: mapConfig.mapStyle || "amap://styles/normal"
         });
       } catch (error) {
-        console.warn(“AMap section map could not be initialized.”, error);
-        mapEl.innerHTML = `<div class=”map-notice”><strong>这个地图容器初始化失败，请检查高德 Key 和浏览器兼容性。</strong></div>`;
+        console.warn("AMap section map could not be initialized.", error);
+        mapEl.innerHTML = `<div class="map-notice"><strong>这个地图容器初始化失败，请检查高德 Key 和浏览器兼容性。</strong></div>`;
         return;
       }
 
-      try { map.addControl(new AMap.Scale()); } catch (error) { console.warn(“AMap scale control failed.”, error); }
-      try { map.addControl(new AMap.ToolBar({ position: “RT” })); } catch (error) { console.warn(“AMap toolbar control failed.”, error); }
-      map.on(“click”, (event) => {
+      try { map.addControl(new AMap.Scale()); } catch (error) { console.warn("AMap scale control failed.", error); }
+      try { map.addControl(new AMap.ToolBar({ position: "RT" })); } catch (error) { console.warn("AMap toolbar control failed.", error); }
+      map.on("click", (event) => {
         if (!state.ownerUnlocked) return;
         placePin(section.id, [event.lnglat.getLng(), event.lnglat.getLat()]);
       });
-      map.on(“complete”, () => {
+      map.on("complete", () => {
         setTimeout(() => {
-          if (map && typeof map.resize === “function”) map.resize();
+          if (map && typeof map.resize === "function") map.resize();
         }, 200);
         setTimeout(() => {
-          if (map && typeof map.resize === “function”) map.resize();
+          if (map && typeof map.resize === "function") map.resize();
         }, 600);
       });
       // 兜底 resize：手机端 complete 事件可能不触发或晚于预期
       setTimeout(() => {
-        if (map && typeof map.resize === “function”) map.resize();
+        if (map && typeof map.resize === "function") map.resize();
       }, 1200);
 
       state.maps[section.id] = map;
@@ -2077,7 +2077,7 @@
       list.innerHTML = `
         <div class="image-manager-empty">
           <strong>这个卡片还没有图片。</strong>
-          <span>推荐点“添加静态路径”，例如 assets/images/food/canteen-01.jpg；“本机临时加图”只在当前浏览器显示。</span>
+          <span>推荐点"添加静态路径"，例如 assets/images/food/canteen-01.jpg；"本机临时加图"只在当前浏览器显示。</span>
         </div>
       `;
       refreshIcons();
