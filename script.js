@@ -937,6 +937,10 @@
           <strong>图片记录</strong>
           <small>当前记录约 ${totalImages} 张图。assets/images 静态路径可同步；电脑上传图只在本浏览器临时显示。</small>
         </div>
+        <button class="upload-mini" type="button" data-migrate-images>
+          ${icon("folder-sync")}
+          <span>迁移临时图到静态路径</span>
+        </button>
         <button class="upload-mini danger" type="button" data-clear-image-cache>
           ${icon("trash-2")}
           <span>清空本地图片缓存</span>
@@ -2173,6 +2177,47 @@
     alert(`已添加 ${paths.length} 条路径到 "${slotSelect.options[slotSelect.selectedIndex].text}"（去重后共 ${next.length} 张）。云端同步后换设备可见。`);
   }
 
+  async function migrateLocalImagesToStatic() {
+    if (!requireOwner("迁移图片")) return;
+    const migrations = [];
+    getAllSlots().forEach((slot) => {
+      getImages(slot, "").forEach((src, index) => {
+        if (isDataImageSrc(src)) migrations.push({ slot, src, index });
+      });
+    });
+    if (!migrations.length) {
+      alert("没有需要迁移的临时图片。所有图片已经是静态路径或外链。");
+      return;
+    }
+    const ok = confirm(`找到 ${migrations.length} 张临时 base64 图片。\n\n点击确定后浏览器会逐个弹出下载窗口，请全部保存到 assets/images/ 文件夹。\n\n下载完成后，对应的静态路径会自动添加到卡片。`);
+    if (!ok) return;
+    for (const item of migrations) {
+      const ext = item.src.indexOf("data:image/png") === 0 ? "png" : "jpg";
+      const filename = `migrated_${item.slot}_${item.index}.${ext}`;
+      const a = document.createElement("a");
+      a.href = item.src;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    let allPaths = [];
+    migrations.forEach(({ slot, index }) => {
+      const ext = "jpg";
+      const path = `assets/images/migrated_${slot}_${index}.${ext}`;
+      allPaths.push({ slot, path });
+    });
+    const slotMap = {};
+    allPaths.forEach(({ slot, path }) => {
+      if (!slotMap[slot]) slotMap[slot] = getImages(slot, "");
+      slotMap[slot].push(path);
+    });
+    Object.entries(slotMap).forEach(([slot, images]) => saveImages(slot, dedupeImageList(images)));
+    alert(`下载完成！已自动为 ${migrations.length} 张图片添加静态路径。\n\n下一步：\n1. 把下载的图片全部放入 assets/images/ 文件夹\n2. 提交推送到 GitHub\n3. 部署后换设备也能看到`);
+    rerenderEditableArea();
+  }
+
   function addStaticImagePathsFromManager() {
     if (!state.imageManager || !requireOwner("添加静态图片路径")) return;
     const { slot, title } = state.imageManager;
@@ -2483,6 +2528,11 @@
       const clearAll = event.target.closest("[data-clear-image-cache]");
       if (clearAll) {
         clearLocalImageCache();
+        return;
+      }
+      const migrateBtn = event.target.closest("[data-migrate-images]");
+      if (migrateBtn) {
+        migrateLocalImagesToStatic();
         return;
       }
       const manageInLab = event.target.closest("[data-manage-images]");
