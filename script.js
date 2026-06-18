@@ -1518,6 +1518,14 @@
     const mapConfig = data.university.campusMap || {};
     const mapEl = $(`#map-${cssEscape(section.id)}`);
     if (!mapEl) return;
+
+    // 用 computed style 强制设置容器宽高，确保 AMap 拿到非零尺寸
+    const cs = getComputedStyle(mapEl);
+    const w = parseFloat(cs.width) || mapEl.offsetWidth || mapEl.clientWidth;
+    const h = parseFloat(cs.height) || mapEl.offsetHeight || mapEl.clientHeight;
+    if (w > 0) mapEl.style.width = w + "px";
+    if (h > 0) mapEl.style.height = h + "px";
+
     mapEl.innerHTML = "";
     const center = mapConfig.center || [113.920343, 30.936542];
     let map;
