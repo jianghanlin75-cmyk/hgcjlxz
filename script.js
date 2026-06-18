@@ -2487,10 +2487,6 @@
   }
 
   async function init() {
-    // 密链入口：只有知道 ?edit 的人才能看到"开发者权限"按钮
-    if (location.search.includes('edit')) {
-      document.body.classList.add('show-admin-entry');
-    }
     state.content = loadContent();
     await loadCloudState();
     cleanupDuplicateLegacyImageStorage();
