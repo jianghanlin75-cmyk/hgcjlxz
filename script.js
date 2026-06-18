@@ -613,6 +613,7 @@
           <button class="image-nav" type="button" data-image-slot="${escapeHtml(slot)}" data-image-step="-1" aria-label="上一张图片" ${hasMany ? "" : "disabled aria-disabled=\"true\""}>${icon("chevron-left")}</button>
           <span class="image-count" data-image-count="${escapeHtml(slot)}">${active + 1}/${images.length}</span>
           <button class="image-nav" type="button" data-image-slot="${escapeHtml(slot)}" data-image-step="1" aria-label="下一张图片" ${hasMany ? "" : "disabled aria-disabled=\"true\""}>${icon("chevron-right")}</button>
+          <button class="image-nav image-nav-delete owner-only" type="button" data-delete-active-image="${escapeHtml(slot)}" aria-label="删除当前图片">${icon("trash-2")}</button>
         </div>
       ` : ""}
     `;
@@ -638,6 +639,18 @@
     const active = getActiveImageIndex(slot, images.length);
     state.activeImageIndex[slot] = (active + step + images.length) % images.length;
     updateImageStack(slot);
+  }
+
+  function deleteActiveImage(slot) {
+    if (!requireOwner("删除图片")) return;
+    const images = getImages(slot, "");
+    if (!images.length) return;
+    const active = getActiveImageIndex(slot, images.length);
+    if (!confirm(`删除第 ${active + 1}/${images.length} 张图片？`)) return;
+    images.splice(active, 1);
+    if (active >= images.length) state.activeImageIndex[slot] = Math.max(0, images.length - 1);
+    if (!saveImages(slot, images)) return;
+    rerenderEditableArea();
   }
 
   function buildRoutes() {
@@ -928,6 +941,19 @@
           ${icon("trash-2")}
           <span>清空本地图片缓存</span>
         </button>
+      </div>
+      <div class="batch-path-row owner-only">
+        <div class="batch-path-header">
+          <strong>批量添加静态路径（跨设备同步）</strong>
+          <small>先把图片放进仓库 assets/images/，再在此粘贴路径，换浏览器和手机都能看到。不想同步只想临时显示的图不要粘贴，直接用上面各卡片的"加图"按钮。</small>
+        </div>
+        <div class="batch-path-inputs">
+          <select class="batch-path-slot" data-batch-slot aria-label="选择目标卡片">
+            ${slots.map((item) => `<option value="${escapeHtml(item.slot)}">${escapeHtml(item.section)} — ${escapeHtml(item.title)}</option>`).join("")}
+          </select>
+          <textarea class="batch-path-text" data-batch-paths rows="5" placeholder="每行一个路径，例如：&#10;assets/images/food/canteen-01.jpg&#10;assets/images/food/canteen-02.jpg&#10;assets/images/library/study-01.jpg"></textarea>
+          <button class="tool-button" type="button" data-batch-add-paths>${icon("link")}<span>批量添加</span></button>
+        </div>
       </div>
       ${slots.map((item) => {
         const images = getImages(item.slot, "");
@@ -2119,6 +2145,34 @@
       .filter(isCloudSafeImageSrc));
   }
 
+  function batchAddStaticPaths() {
+    if (!requireOwner("批量添加静态路径")) return;
+    const slotSelect = $("[data-batch-slot]");
+    const textarea = $("[data-batch-paths]");
+    if (!slotSelect || !textarea) return;
+    const slot = slotSelect.value;
+    const text = textarea.value.trim();
+    if (!slot || !text) {
+      alert("请先选择目标卡片，再粘贴图片路径（每行一条）。");
+      return;
+    }
+    const paths = parseImagePathInput(text);
+    if (!paths.length) {
+      alert("没有识别到有效图片路径。请填写 assets/images/... 或 https://...，不要粘贴 data:image/base64。");
+      return;
+    }
+    const existing = getImages(slot, "");
+    const next = dedupeImageList(existing.concat(paths));
+    if (!saveImages(slot, next)) {
+      alert("保存失败，可能路径数量过多或浏览器存储已满。");
+      return;
+    }
+    textarea.value = "";
+    state.activeImageIndex[slot] = Math.max(0, next.length - paths.length);
+    rerenderEditableArea();
+    alert(`已添加 ${paths.length} 条路径到 "${slotSelect.options[slotSelect.selectedIndex].text}"（去重后共 ${next.length} 张）。云端同步后换设备可见。`);
+  }
+
   function addStaticImagePathsFromManager() {
     if (!state.imageManager || !requireOwner("添加静态图片路径")) return;
     const { slot, title } = state.imageManager;
@@ -2283,6 +2337,7 @@
       const deletePinButton = event.target.closest("[data-delete-pin]");
       const pinOpen = event.target.closest("[data-pin-open]");
       const imageButton = event.target.closest("[data-image-step][data-image-slot]");
+      const deleteImageButton = event.target.closest("[data-delete-active-image]");
       const manageImagesButton = event.target.closest("[data-manage-images]");
       const editSectionToneButton = event.target.closest("[data-edit-section-tone]");
       const editSectionButton = event.target.closest("[data-edit-section]");
@@ -2290,6 +2345,10 @@
 
       if (imageButton) {
         cycleImage(imageButton.dataset.imageSlot, Number(imageButton.dataset.imageStep));
+        return;
+      }
+      if (deleteImageButton) {
+        deleteActiveImage(deleteImageButton.dataset.deleteActiveImage);
         return;
       }
       if (manageImagesButton) {
@@ -2434,6 +2493,10 @@
       const clearSlot = event.target.closest("[data-clear-slot-images]");
       if (clearSlot) {
         clearSlotImages(clearSlot.dataset.clearSlotImages, clearSlot.dataset.clearSlotTitle);
+      }
+      const batchAdd = event.target.closest("[data-batch-add-paths]");
+      if (batchAdd) {
+        batchAddStaticPaths();
       }
     });
 
