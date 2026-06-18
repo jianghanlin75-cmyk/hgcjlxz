@@ -1063,42 +1063,56 @@
       const uploaded = await uploadImagesToCloud(slot, incoming);
       if (uploaded.length) {
         incoming = uploaded;
+      } else {
+        notifyImageFallback();
       }
-      // R2 上传失败时仍然继续 — 图片会通过 D1 imageStacks 同步
     }
     const combined = existing.concat(incoming);
     const nextImages = combined.slice(-MAX_IMAGES_PER_SLOT);
     const trimmed = combined.length - nextImages.length;
     if (!saveImages(slot, nextImages)) {
-      const fallback = incoming.slice(-Math.min(incoming.length, 2));
+      const fallback = (cloudUrls.length ? cloudUrls : incoming).slice(-2);
       if (!saveImages(slot, fallback)) return;
     }
     if (trimmed > 0) {
-      alert(`为了避免浏览器本地存储爆满，这个图片槽只保留最新 ${MAX_IMAGES_PER_SLOT} 张，已自动移除最早的 ${trimmed} 张。长期保存图片建议放到云存储或 assets/images 文件夹。`);
+      alert(`已自动移除最早的 ${trimmed} 张（槽位上限 ${MAX_IMAGES_PER_SLOT} 张）。`);
     }
-    state.activeImageIndex[slot] = Math.max(0, nextImages.length - incoming.length);
+    state.activeImageIndex[slot] = Math.max(0, nextImages.length - (cloudUrls.length || incoming.length));
     rerenderEditableArea();
   }
 
+  function notifyImageFallback() {
+    const now = Date.now();
+    if (now - state.cloud.imageNoticeAt < 12000) return;
+    state.cloud.imageNoticeAt = now;
+    alert(“图片已压缩保存到当前浏览器。\n\n要让图片跨设备同步可见：\n① 把图片放到仓库 assets/images/ 里，然后在「管图」里对每个卡片点「添加静态路径」\n② 如果只需要在当前电脑看，本机 localStorage 已保存，不影响浏览\n\n提示：项目目录的 list-images.txt 列出了所有可用图片路径。”);
+  }
+
   async function uploadImagesToCloud(slot, dataUrls) {
+    if (!state.cloud.enabled || !state.ownerUnlocked) return [];
     const uploaded = [];
     for (const dataUrl of dataUrls) {
       try {
-        const response = await fetch("/api/upload", {
-          method: "POST",
+        const response = await fetch(“/api/upload”, {
+          method: “POST”,
           headers: {
-            "content-type": "application/json",
-            "x-admin-token": getOwnerToken()
+            “content-type”: “application/json”,
+            “x-admin-token”: getOwnerToken()
           },
           body: JSON.stringify({ slot, dataUrl })
         });
-        if (!response.ok) throw new Error(`Image upload failed: ${response.status}`);
-        const payload = await response.json();
-        if (payload && payload.url) uploaded.push(payload.url);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || `Upload failed: ${response.status}`);
+        }
+        const result = await response.json();
+        if (result.ok && result.url) {
+          uploaded.push(result.url);
+        } else {
+          throw new Error(result.error || “Upload failed”);
+        }
       } catch (error) {
-        // R2 未绑定，静默跳过，图片通过 D1 imageStacks 同步
-        console.warn("R2 upload skipped:", error.message);
-        return uploaded;
+        console.warn(“R2 upload failed, keeping image as local-only.”, error);
       }
     }
     return uploaded;
