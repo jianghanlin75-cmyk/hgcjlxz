@@ -1499,10 +1499,14 @@
 
     state.amapLoading
       .then((AMap) => {
-        // 延迟 map 初始化，确保 DOM 布局（尤其是首屏板块的容器尺寸）已就绪
+        // 手机端 DOM 布局慢，等 400ms 再用 RAF 确保容器已绘制再初始化地图
         setTimeout(() => {
-          state.content.sections.forEach((section) => initSectionMap(AMap, section));
-        }, 120);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              state.content.sections.forEach((section) => initSectionMap(AMap, section));
+            });
+          });
+        }, 400);
       })
       .catch((error) => {
         console.warn("AMap could not be loaded.", error);
