@@ -287,6 +287,12 @@
 
   async function saveCloudState() {
     if (!state.cloud.enabled || !state.ownerUnlocked) return false;
+    // 安全阀：拒绝推送空内容到云端覆盖已有数据
+    var sections = (state.content.sections || []);
+    if (!sections.length || !sections.some(function (s) { return s.items && s.items.length; })) {
+      console.warn("Cloud save blocked: content is empty, will not overwrite cloud data.");
+      return false;
+    }
     try {
       const response = await fetch("/api/content", {
         method: "PUT",
