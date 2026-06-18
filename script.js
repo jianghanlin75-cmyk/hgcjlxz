@@ -1055,8 +1055,10 @@
     }
     if (state.cloud.enabled) {
       const uploaded = await uploadImagesToCloud(slot, incoming);
-      if (uploaded.length) incoming = uploaded;
-      else return;
+      if (uploaded.length) {
+        incoming = uploaded;
+      }
+      // R2 上传失败时仍然继续 — 图片会通过 D1 imageStacks 同步
     }
     const combined = existing.concat(incoming);
     const nextImages = combined.slice(-MAX_IMAGES_PER_SLOT);
@@ -1088,7 +1090,8 @@
         const payload = await response.json();
         if (payload && payload.url) uploaded.push(payload.url);
       } catch (error) {
-        showCloudError("图片上传到云端失败，已停止本次加图。", error);
+        // R2 未绑定，静默跳过，图片通过 D1 imageStacks 同步
+        console.warn("R2 upload skipped:", error.message);
         return uploaded;
       }
     }
