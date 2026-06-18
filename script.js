@@ -1383,6 +1383,38 @@
     state.markers = {};
   }
 
+  // IntersectionObserver 懒加载：滚动到地图附近才创建，避免移动端多 WebGL 上下文冲突
+  var _lazyObserver = null;
+
+  function lazyInitMaps(AMap) {
+    if (_lazyObserver) { _lazyObserver.disconnect(); }
+    // 记录已入队但尚未完成的 section，避免重复入队
+    var pending = {};
+    _lazyObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var sectionId = entry.target.dataset.sectionId;
+        if (!sectionId || state.maps[sectionId] || pending[sectionId]) return;
+        pending[sectionId] = true;
+        _lazyObserver.unobserve(entry.target);
+        var section = getSection(sectionId);
+        if (!section) return;
+        mapQueueEnqueue(function () {
+          var m = initSectionMap(AMap, section);
+          delete pending[sectionId];
+          return m;
+        });
+      });
+    }, { rootMargin: '500px 0px' });
+
+    state.content.sections.forEach(function (section) {
+      var el = $('#map-' + cssEscape(section.id));
+      if (!el) return;
+      el.dataset.sectionId = section.id;
+      _lazyObserver.observe(el);
+    });
+  }
+
   function initAmapMaps(forceReload) {
     const mapConfig = data.university.campusMap || {};
     const credentials = getAmapCredentials();
@@ -1411,12 +1443,8 @@
 
     state.amapLoading
       .then((AMap) => {
-        // 所有 section map 通过串行队列创建，杜绝 Shader 竞争白屏
-        state.content.sections.forEach((section) => {
-          mapQueueEnqueue(function () {
-            return initSectionMap(AMap, section);
-          });
-        });
+        // 懒加载：只创建视口附近的地图，避免移动端 WebGL 上下文竞争
+        lazyInitMaps(AMap);
       })
       .catch((error) => {
         console.warn("AMap could not be loaded.", error);
