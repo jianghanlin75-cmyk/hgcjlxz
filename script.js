@@ -1499,14 +1499,25 @@
 
     state.amapLoading
       .then((AMap) => {
-        // 手机端 DOM 布局慢，等 400ms 再用 RAF 确保容器已绘制再初始化地图
-        setTimeout(() => {
-          requestAnimationFrame(() => {
+        // 预热：先建 1x1 隐形 map 触发 AMap 加载 WebGL shader 等内部资源，
+        // 等 complete 后销毁，再创建正式 map。修复手机端首屏白屏（shader 编译 null 导致）
+        const warmup = document.createElement("div");
+        warmup.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;pointer-events:none;";
+        document.body.appendChild(warmup);
+        const wm = new AMap.Map(warmup, {
+          viewMode: "2D", zoom: 1, center: [0, 0], mapStyle: "amap://styles/normal"
+        });
+        wm.on("complete", () => {
+          wm.destroy();
+          warmup.remove();
+          setTimeout(() => {
             requestAnimationFrame(() => {
-              state.content.sections.forEach((section) => initSectionMap(AMap, section));
+              requestAnimationFrame(() => {
+                state.content.sections.forEach((section) => initSectionMap(AMap, section));
+              });
             });
-          });
-        }, 400);
+          }, 200);
+        });
       })
       .catch((error) => {
         console.warn("AMap could not be loaded.", error);
