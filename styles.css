@@ -648,6 +648,16 @@ body:not(.owner-unlocked) .owner-only {
   backdrop-filter: blur(14px);
 }
 
+.module-rail[data-pinned="true"] {
+  position: fixed;
+  top: 96px;
+  z-index: 10;
+}
+
+.module-rail[data-pinned="true"] ~ .module-stage {
+  grid-column: 2;
+}
+
 .rail-title {
   padding: 8px 8px 12px;
   color: var(--muted);
@@ -2047,6 +2057,17 @@ body.owner-unlocked .place-card.is-hidden-card::before {
     border-left: 0;
     border-right: 0;
     overflow: auto;
+  }
+
+  .module-rail[data-pinned="true"] {
+    position: sticky;
+    top: 66px;
+    left: auto;
+    width: auto;
+  }
+
+  .module-rail[data-pinned="true"] ~ .module-stage {
+    grid-column: auto;
   }
 
   .rail-title {

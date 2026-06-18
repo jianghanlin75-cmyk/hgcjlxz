@@ -1484,54 +1484,45 @@
     const mapConfig = data.university.campusMap || {};
     const mapEl = $(`#map-${cssEscape(section.id)}`);
     if (!mapEl) return;
-
-    // 手机端首屏地图容器 DOM 布局可能尚未完成，用 RAF 确保尺寸已就绪再初始化
-    const doInit = () => {
-      if (!mapEl.offsetWidth || !mapEl.offsetHeight) {
-        requestAnimationFrame(doInit);
-        return;
-      }
-      mapEl.innerHTML = "";
-      const center = mapConfig.center || [113.920343, 30.936542];
-      let map;
-      try {
-        map = new AMap.Map(mapEl, {
-          viewMode: mapConfig.viewMode || "2D",
-          zoom: mapConfig.zoom || 16,
-          center,
-          resizeEnable: true,
-          mapStyle: mapConfig.mapStyle || "amap://styles/normal"
-        });
-      } catch (error) {
-        console.warn("AMap section map could not be initialized.", error);
-        mapEl.innerHTML = `<div class="map-notice"><strong>这个地图容器初始化失败，请检查高德 Key 和浏览器兼容性。</strong></div>`;
-        return;
-      }
-
-      try { map.addControl(new AMap.Scale()); } catch (error) { console.warn("AMap scale control failed.", error); }
-      try { map.addControl(new AMap.ToolBar({ position: "RT" })); } catch (error) { console.warn("AMap toolbar control failed.", error); }
-      map.on("click", (event) => {
-        if (!state.ownerUnlocked) return;
-        placePin(section.id, [event.lnglat.getLng(), event.lnglat.getLat()]);
+    mapEl.innerHTML = "";
+    const center = mapConfig.center || [113.920343, 30.936542];
+    let map;
+    try {
+      map = new AMap.Map(mapEl, {
+        viewMode: mapConfig.viewMode || "2D",
+        zoom: mapConfig.zoom || 16,
+        center,
+        resizeEnable: true,
+        mapStyle: mapConfig.mapStyle || "amap://styles/normal"
       });
-      map.on("complete", () => {
-        setTimeout(() => {
-          if (map && typeof map.resize === "function") map.resize();
-        }, 200);
-        setTimeout(() => {
-          if (map && typeof map.resize === "function") map.resize();
-        }, 600);
-      });
-      // 兜底 resize：手机端 complete 事件可能不触发或晚于预期
+    } catch (error) {
+      console.warn("AMap section map could not be initialized.", error);
+      mapEl.innerHTML = `<div class="map-notice"><strong>这个地图容器初始化失败，请检查高德 Key 和浏览器兼容性。</strong></div>`;
+      return;
+    }
+
+    try { map.addControl(new AMap.Scale()); } catch (error) { console.warn("AMap scale control failed.", error); }
+    try { map.addControl(new AMap.ToolBar({ position: "RT" })); } catch (error) { console.warn("AMap toolbar control failed.", error); }
+    map.on("click", (event) => {
+      if (!state.ownerUnlocked) return;
+      placePin(section.id, [event.lnglat.getLng(), event.lnglat.getLat()]);
+    });
+    map.on("complete", () => {
       setTimeout(() => {
         if (map && typeof map.resize === "function") map.resize();
-      }, 1200);
+      }, 200);
+      setTimeout(() => {
+        if (map && typeof map.resize === "function") map.resize();
+      }, 600);
+    });
+    // 兜底 resize：手机端 complete 事件可能不触发或晚于预期
+    setTimeout(() => {
+      if (map && typeof map.resize === "function") map.resize();
+    }, 1200);
 
-      state.maps[section.id] = map;
-      state.markers[section.id] = [];
-      renderPins(section.id);
-    };
-    doInit();
+    state.maps[section.id] = map;
+    state.markers[section.id] = [];
+    renderPins(section.id);
   }
 
   function renderPins(sectionId) {
@@ -2469,6 +2460,23 @@
       topbar.dataset.elevated = window.scrollY > 16 ? "true" : "false";
       backTop.classList.toggle("is-visible", window.scrollY > 680);
       updateActiveNav();
+      // 侧边栏：滚到板块区域时自动固定，离开时恢复
+      const modules = document.getElementById("modules");
+      const rail = document.querySelector(".module-rail");
+      if (modules && rail) {
+        const r = modules.getBoundingClientRect();
+        const shouldPin = r.top <= 96 && r.bottom > 150;
+        if (shouldPin && rail.dataset.pinned !== "true") {
+          const railRect = rail.getBoundingClientRect();
+          rail.style.width = railRect.width + "px";
+          rail.style.left = railRect.left + "px";
+          rail.dataset.pinned = "true";
+        } else if (!shouldPin && rail.dataset.pinned === "true") {
+          rail.dataset.pinned = "false";
+          rail.style.left = "";
+          rail.style.width = "";
+        }
+      }
     }, { passive: true });
 
     let resizeTimer = null;
