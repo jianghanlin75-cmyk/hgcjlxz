@@ -704,6 +704,7 @@ body:not(.owner-unlocked) .owner-only {
 }
 
 .module-stage {
+  grid-column: 2;
   display: grid;
   gap: 46px;
 }
