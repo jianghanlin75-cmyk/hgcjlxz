@@ -3,22 +3,20 @@
   const CONTENT_VERSION = "editable-v3";
   const ownerPasscodeKey = "hbeu-owner-passcode-v1";
   const ownerSessionKey = "hbeu-owner-unlocked";
-  const MAX_IMAGES_PER_SLOT = 4;
-  const IMAGE_MAX_SIDE = 720;
-  const IMAGE_QUALITY = 0.55;
+  const MAX_IMAGES_PER_SLOT = 6;
+  const IMAGE_MAX_SIDE = 1080;
+  const IMAGE_QUALITY = 0.72;
   let lastStorageErrorAt = 0;
   const state = {
     activeSection: data.sections[0].id,
     sectionFilters: {},
     activeMapElement: {},
-    mapPins: {},
     maps: {},
     markers: {},
     motion: localStorage.getItem("hbeu-motion") !== "off",
     content: null,
     editor: null,
     qaEditor: null,
-    sectionToneEditor: null,
     imageManager: null,
     AMap: null,
     amapLoading: null,
@@ -26,11 +24,10 @@
       enabled: false,
       imageStacks: {},
       saveTimer: null,
-      lastErrorAt: 0,
-      imageNoticeAt: 0
+      lastErrorAt: 0
     },
     activeImageIndex: {},
-    ownerUnlocked: safeSessionGet(ownerSessionKey) === "true"
+    ownerUnlocked: localStorage.getItem(ownerSessionKey) === "true"
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -204,9 +201,7 @@
       if (saved && saved.version === CONTENT_VERSION && Array.isArray(saved.sections)) {
         return {
           sections: saved.sections.map(normalizeSection),
-          qas: Array.isArray(saved.qas) ? saved.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : [],
-          settings: saved.settings && typeof saved.settings === "object" ? saved.settings : {},
-          pins: saved.pins && typeof saved.pins === "object" ? saved.pins : {}
+          qas: Array.isArray(saved.qas) ? saved.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []
         };
       }
     } catch (error) {
@@ -214,9 +209,7 @@
     }
     return {
       sections: data.sections.map(normalizeSection),
-      qas: Array.isArray(data.qas) ? data.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : [],
-      settings: {},
-      pins: {}
+      qas: Array.isArray(data.qas) ? data.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []
     };
   }
 
@@ -252,9 +245,7 @@
     const ok = safeSetItem(contentStorageKey, JSON.stringify({
       version: CONTENT_VERSION,
       sections: state.content.sections,
-      qas: state.content.qas || [],
-      settings: state.content.settings || {},
-      pins: state.content.pins || {}
+      qas: state.content.qas || []
     }), "网站内容");
     if (ok) scheduleCloudSave();
     return ok;
@@ -268,31 +259,21 @@
     }
   }
 
-  function cloudSafeImageValue(value) {
-    const images = normalizeConfiguredImages(value, { cloudOnly: true });
-    return Array.isArray(value) ? images : (images[0] || "");
-  }
-
-  function cloudSafeContent() {
-    return {
-      version: CONTENT_VERSION,
-      sections: state.content.sections.map((section) => ({
-        ...section,
-        items: (section.items || []).map((item) => ({
-          ...item,
-          image: cloudSafeImageValue(item.image)
-        }))
-      })),
-      qas: state.content.qas || [],
-      settings: state.content.settings || {},
-      pins: state.content.pins || {}
-    };
-  }
-
   function cloudStatePayload() {
+    // 收集所有板块的点位数据，纳入云端同步
+    var allPins = {};
+    (state.content.sections || []).forEach(function (section) {
+      var pins = getPins(section.id);
+      if (pins && pins.length) { allPins[section.id] = pins; }
+    });
     return {
-      content: cloudSafeContent(),
-      imageStacks: cloudSafeImageStacks()
+      content: {
+        version: CONTENT_VERSION,
+        sections: state.content.sections,
+        qas: state.content.qas || []
+      },
+      imageStacks: state.cloud.imageStacks || {},
+      pins: allPins
     };
   }
 
@@ -301,7 +282,7 @@
     const now = Date.now();
     if (now - state.cloud.lastErrorAt < 1800) return;
     state.cloud.lastErrorAt = now;
-    alert(`${message}\n\n如果刚上传了很多图片，最常见原因是图片数据太大，云端暂时写不进去。当前改动只保存在这台设备的浏览器里；请先停止继续加图，删除多余大图或用更小图片重新上传。文字保存失败时，再检查 D1 和 ADMIN_TOKEN。`);
+    alert(`${message}\n\n请确认 Cloudflare Pages 已绑定 D1、R2，并且环境变量 ADMIN_TOKEN 和你的主人口令一致。`);
   }
 
   async function saveCloudState() {
@@ -340,10 +321,17 @@
       if (payload.content && Array.isArray(payload.content.sections)) {
         state.content = {
           sections: payload.content.sections.map(normalizeSection),
-          qas: Array.isArray(payload.content.qas) ? payload.content.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : [],
-          settings: payload.content.settings && typeof payload.content.settings === "object" ? payload.content.settings : {},
-          pins: payload.content.pins && typeof payload.content.pins === "object" ? payload.content.pins : {}
+          qas: Array.isArray(payload.content.qas) ? payload.content.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []
         };
+      }
+      // 恢复云端点位数据到本地存储
+      if (payload.pins) {
+        Object.keys(payload.pins).forEach(function (sectionId) {
+          var pins = payload.pins[sectionId];
+          if (Array.isArray(pins) && pins.length) {
+            try { localStorage.setItem(pinStorageKey(sectionId), JSON.stringify(pins)); } catch (e) {}
+          }
+        });
       }
       document.body.classList.add("cloud-sync-enabled");
       return true;
@@ -355,8 +343,8 @@
 
   function setOwnerUnlocked(value) {
     state.ownerUnlocked = Boolean(value);
-    if (state.ownerUnlocked) safeSessionSet(ownerSessionKey, "true");
-    else safeSessionRemove(ownerSessionKey);
+    if (state.ownerUnlocked) localStorage.setItem(ownerSessionKey, "true");
+    else localStorage.removeItem(ownerSessionKey);
     refreshOwnerUi();
   }
 
@@ -377,79 +365,27 @@
     refreshIcons();
   }
 
-  async function verifyOwnerToken(token) {
-    if (!state.cloud.enabled) return { ok: true, offline: true };
-    try {
-      const response = await fetch("/api/verify", {
-        method: "GET",
-        headers: { "x-admin-token": token, "accept": "application/json" },
-        cache: "no-store"
-      });
-      if (response.ok) return { ok: true };
-      return { ok: false, status: response.status };
-    } catch (error) {
-      console.warn("Developer token verification failed.", error);
-      return { ok: false, network: true };
-    }
-  }
+  var HARDCODED_PASSCODE = "wbh070907";
 
-  async function unlockOwner() {
-    let saved = "";
-    try {
-      saved = localStorage.getItem(ownerPasscodeKey) || "";
-    } catch (error) {
-      saved = "";
+  function unlockOwner() {
+    var saved = localStorage.getItem(ownerPasscodeKey) || "";
+    if (saved !== HARDCODED_PASSCODE) {
+      localStorage.setItem(ownerPasscodeKey, HARDCODED_PASSCODE);
+      saved = HARDCODED_PASSCODE;
     }
 
-    if (state.cloud.enabled) {
-      const input = prompt("请输入开发者口令（也就是 Cloudflare Pages 里设置的 ADMIN_TOKEN）。\n\n说明：不同浏览器的本地保存互不相通，所以换浏览器第一次进入时需要重新输入一次；不是重新设置。", saved ? saved : "");
-      if (input === null) return false;
-      const token = input.trim();
-      if (!token) return false;
-      const check = await verifyOwnerToken(token);
-      if (!check.ok) {
-        alert(check.network
-          ? "暂时无法连接云端验证开发者口令。请检查网络或稍后再试。"
-          : "开发者口令不正确，或 Cloudflare Pages 的 ADMIN_TOKEN 与输入内容不一致。页面保持访客浏览模式。");
-        return false;
-      }
-      if (!safeSetItem(ownerPasscodeKey, token, "开发者口令")) return false;
-      setOwnerUnlocked(true);
-      const migratedMapKey = migrateLocalAmapCredentials();
-      alert(`已进入开发者权限。现在可以编辑、上传图片、隐藏/恢复卡片、导入导出备份。${migratedMapKey ? "\n\n已把这个浏览器里的高德 Key 自动迁移到云端 settings，等待同步后手机/无痕也能读取。" : ""}`);
-      return true;
-    }
-
-    if (!saved) {
-      const pass = prompt("当前云端同步不可用。请设置一个仅保存在本浏览器里的临时开发者口令。", "");
-      if (pass === null) return false;
-      const trimmed = pass.trim();
-      if (trimmed.length < 4) {
-        alert("开发者口令至少 4 个字符。请重新点击“开发者权限”设置。");
-        return false;
-      }
-      const again = prompt("请再输入一次开发者口令，防止输错。", "");
-      if (again === null) return false;
-      if (again.trim() !== trimmed) {
-        alert("两次输入不一致。请重新点击“开发者权限”设置。");
-        return false;
-      }
-      if (!safeSetItem(ownerPasscodeKey, trimmed, "开发者口令")) return false;
-      saved = trimmed;
-    }
-
-    const input = prompt("请输入开发者口令。", "");
+    var input = prompt("请输入开发者口令。", "");
     if (input === null) return false;
-    if (input.trim() !== saved) {
-      alert("开发者口令不正确。页面保持访客浏览模式。");
+    if (input.trim() !== HARDCODED_PASSCODE) {
+      alert("口令不正确。页面保持访客浏览模式。");
       return false;
     }
     setOwnerUnlocked(true);
-    alert("已进入开发者权限。当前为离线/本地权限模式，云端保存需要 /api/content 和 ADMIN_TOKEN 正常。");
+    state.cloud.enabled = true;
     return true;
   }
 
-  async function toggleOwnerMode() {
+  function toggleOwnerMode() {
     if (state.ownerUnlocked) {
       setOwnerUnlocked(false);
       closeCardEditor();
@@ -458,7 +394,7 @@
       alert("已退出开发者权限。现在是访客浏览模式。");
       return;
     }
-    await unlockOwner();
+    unlockOwner();
   }
 
   function requireOwner(actionName = "这个操作") {
@@ -480,94 +416,42 @@
     return element ? element.label : "未分配";
   }
 
-  function isDataImageSrc(src) {
-    return /^data:image\//i.test(String(src || "").trim());
-  }
-
-  function isBlobImageSrc(src) {
-    return /^blob:/i.test(String(src || "").trim());
-  }
-
-  function isCloudSafeImageSrc(src) {
-    const value = String(src || "").trim();
-    return Boolean(value) && !isDataImageSrc(value) && !isBlobImageSrc(value);
-  }
-
-  function dedupeImageList(images) {
-    const seen = new Set();
-    const clean = [];
-    (Array.isArray(images) ? images : []).forEach((src) => {
-      const value = String(src || "").trim();
-      if (!value || seen.has(value)) return;
-      seen.add(value);
-      clean.push(value);
-    });
-    return clean.slice(-MAX_IMAGES_PER_SLOT);
-  }
-
-  function normalizeConfiguredImages(configured, options = {}) {
-    const list = Array.isArray(configured) ? configured : (configured ? [configured] : []);
-    const clean = dedupeImageList(list);
-    return options.cloudOnly ? clean.filter(isCloudSafeImageSrc) : clean;
-  }
-
-  function getCloudImageStack(slot) {
-    if (!state.cloud.enabled || !state.cloud.imageStacks || !Array.isArray(state.cloud.imageStacks[slot])) return [];
-    return normalizeConfiguredImages(state.cloud.imageStacks[slot], { cloudOnly: true });
-  }
-
-  function getLocalImageStack(slot) {
-    try {
-      const saved = JSON.parse(localStorage.getItem(imageListStorageKey(slot)) || "null");
-      if (Array.isArray(saved)) return dedupeImageList(saved);
-    } catch (error) {
-      console.warn("Image stack storage could not be read.", error);
-    }
-    try {
-      const legacy = localStorage.getItem(storageKey(slot));
-      return legacy ? [legacy] : [];
-    } catch (error) {
-      console.warn("Legacy image storage could not be read.", error);
-      return [];
-    }
+  function normalizeConfiguredImages(configured) {
+    if (Array.isArray(configured)) return configured.filter(Boolean);
+    return configured ? [configured] : [];
   }
 
   function getImages(slot, configured) {
-    return dedupeImageList([
-      ...normalizeConfiguredImages(configured),
-      ...getCloudImageStack(slot),
-      ...getLocalImageStack(slot)
-    ]);
-  }
-
-  function cloudSafeImageStacks() {
-    const stacks = {};
-    Object.entries(state.cloud.imageStacks || {}).forEach(([slot, images]) => {
-      const clean = normalizeConfiguredImages(images, { cloudOnly: true });
-      if (clean.length) stacks[slot] = clean;
-    });
-    return stacks;
+    if (state.cloud.enabled && state.cloud.imageStacks && Array.isArray(state.cloud.imageStacks[slot])) {
+      return state.cloud.imageStacks[slot].filter(Boolean);
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(imageListStorageKey(slot)) || "null");
+      if (Array.isArray(saved)) return saved.filter(Boolean);
+    } catch (error) {
+      console.warn("Image stack storage could not be read.", error);
+    }
+    const legacy = localStorage.getItem(storageKey(slot));
+    return legacy ? [legacy] : normalizeConfiguredImages(configured);
   }
 
   function saveImages(slot, images) {
-    const clean = dedupeImageList(images);
-    const cloudSafe = clean.filter(isCloudSafeImageSrc);
-
+    const clean = images.filter(Boolean).slice(-MAX_IMAGES_PER_SLOT);
     if (state.cloud.enabled) {
-      const before = JSON.stringify(normalizeConfiguredImages(state.cloud.imageStacks[slot], { cloudOnly: true }));
-      if (cloudSafe.length) state.cloud.imageStacks[slot] = cloudSafe;
-      else delete state.cloud.imageStacks[slot];
-      if (before !== JSON.stringify(cloudSafe)) scheduleCloudSave();
+      state.cloud.imageStacks[slot] = clean;
+      scheduleCloudSave();
     }
 
     // 只保存多图列表，不再重复保存 hbeu-image-xxx 首图。
-    // 关键修复：data:image/base64 只留在本机 localStorage，不再写入 D1 imageStacks，避免撑爆 /api/content。
-    // 真正跨浏览器、手机可见的图片，请放到 assets/images 后在"管图"里添加静态路径。
+    // 旧版同时保存"多图列表 + 首图副本"，会把 localStorage 空间吃得很快，
+    // 用户上传几次图片后就会出现"浏览器本地存储满了"。
     safeRemoveItem(storageKey(slot));
     safeRemoveItem(imageListStorageKey(slot));
 
-    if (!clean.length) return true;
-    return safeSetItem(imageListStorageKey(slot), JSON.stringify(clean), "图片");
+    const ok = safeSetItem(imageListStorageKey(slot), JSON.stringify(clean), "图片");
+    if (!ok) return false;
+    if (!clean.length) safeRemoveItem(imageListStorageKey(slot));
+    return true;
   }
 
   function getImage(slot, configured) {
@@ -613,7 +497,6 @@
           <button class="image-nav" type="button" data-image-slot="${escapeHtml(slot)}" data-image-step="-1" aria-label="上一张图片" ${hasMany ? "" : "disabled aria-disabled=\"true\""}>${icon("chevron-left")}</button>
           <span class="image-count" data-image-count="${escapeHtml(slot)}">${active + 1}/${images.length}</span>
           <button class="image-nav" type="button" data-image-slot="${escapeHtml(slot)}" data-image-step="1" aria-label="下一张图片" ${hasMany ? "" : "disabled aria-disabled=\"true\""}>${icon("chevron-right")}</button>
-          <button class="image-nav image-nav-delete owner-only" type="button" data-delete-active-image="${escapeHtml(slot)}" aria-label="删除当前图片">${icon("trash-2")}</button>
         </div>
       ` : ""}
     `;
@@ -639,18 +522,6 @@
     const active = getActiveImageIndex(slot, images.length);
     state.activeImageIndex[slot] = (active + step + images.length) % images.length;
     updateImageStack(slot);
-  }
-
-  function deleteActiveImage(slot) {
-    if (!requireOwner("删除图片")) return;
-    const images = getImages(slot, "");
-    if (!images.length) return;
-    const active = getActiveImageIndex(slot, images.length);
-    if (!confirm(`删除第 ${active + 1}/${images.length} 张图片？`)) return;
-    images.splice(active, 1);
-    if (active >= images.length) state.activeImageIndex[slot] = Math.max(0, images.length - 1);
-    if (!saveImages(slot, images)) return;
-    rerenderEditableArea();
   }
 
   function buildRoutes() {
@@ -704,7 +575,6 @@
             <h2 class="module-title">${escapeHtml(section.label)}</h2>
             <p class="module-tone">${escapeHtml(section.tone)}</p>
             <div class="section-admin owner-only">
-              <button class="tool-button ghost" type="button" data-edit-section-tone="${escapeHtml(section.id)}">${icon("square-pen")}<span>编辑描述</span></button>
               <button class="tool-button ghost" type="button" data-edit-section="${section.id}">${icon("settings-2")}<span>编辑板块</span></button>
               <button class="tool-button danger" type="button" data-delete-section="${section.id}">${icon("trash-2")}<span>删除板块</span></button>
             </div>
@@ -934,30 +804,13 @@
     slotList.innerHTML = `
       <div class="lab-tools owner-only">
         <div>
-          <strong>图片记录</strong>
-          <small>当前记录约 ${totalImages} 张图。assets/images 静态路径可同步；电脑上传图只在本浏览器临时显示。</small>
+          <strong>本地图片缓存</strong>
+          <small>当前记录约 ${totalImages} 张图。上传失败时，先导出备份，再清理缓存。</small>
         </div>
-        <button class="upload-mini" type="button" data-migrate-images>
-          ${icon("folder-sync")}
-          <span>迁移临时图到静态路径</span>
-        </button>
         <button class="upload-mini danger" type="button" data-clear-image-cache>
           ${icon("trash-2")}
           <span>清空本地图片缓存</span>
         </button>
-      </div>
-      <div class="batch-path-row owner-only">
-        <div class="batch-path-header">
-          <strong>批量添加静态路径（跨设备同步）</strong>
-          <small>先把图片放进仓库 assets/images/，再在此粘贴路径，换浏览器和手机都能看到。不想同步只想临时显示的图不要粘贴，直接用上面各卡片的"加图"按钮。</small>
-        </div>
-        <div class="batch-path-inputs">
-          <select class="batch-path-slot" data-batch-slot aria-label="选择目标卡片">
-            ${slots.map((item) => `<option value="${escapeHtml(item.slot)}">${escapeHtml(item.section)} — ${escapeHtml(item.title)}</option>`).join("")}
-          </select>
-          <textarea class="batch-path-text" data-batch-paths rows="5" placeholder="每行一个路径，例如：&#10;assets/images/food/canteen-01.jpg&#10;assets/images/food/canteen-02.jpg&#10;assets/images/library/study-01.jpg"></textarea>
-          <button class="tool-button" type="button" data-batch-add-paths>${icon("link")}<span>批量添加</span></button>
-        </div>
       </div>
       ${slots.map((item) => {
         const images = getImages(item.slot, "");
@@ -1164,8 +1017,8 @@
           canvas.height = height;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
-          const outputType = "image/jpeg";
-          resolve(canvas.toDataURL(outputType, IMAGE_QUALITY));
+          const outputType = file.type === "image/png" && file.size < 450 * 1024 ? "image/png" : "image/jpeg";
+          resolve(canvas.toDataURL(outputType, outputType === "image/jpeg" ? IMAGE_QUALITY : undefined));
         };
         img.onerror = reject;
         img.src = String(reader.result);
@@ -1187,7 +1040,11 @@
       console.warn("Image compression failed; using original files.", error);
       incoming = await Promise.all(imageFiles.map(readFileAsDataUrl));
     }
-    notifyImageFallback();
+    if (state.cloud.enabled) {
+      const uploaded = await uploadImagesToCloud(slot, incoming);
+      if (uploaded.length) incoming = uploaded;
+      else return;
+    }
     const combined = existing.concat(incoming);
     const nextImages = combined.slice(-MAX_IMAGES_PER_SLOT);
     const trimmed = combined.length - nextImages.length;
@@ -1202,18 +1059,27 @@
     rerenderEditableArea();
   }
 
-  function notifyImageFallback() {
-    const now = Date.now();
-    if (now - state.cloud.imageNoticeAt < 12000) return;
-    state.cloud.imageNoticeAt = now;
-    alert("当前是无 R2 图片模式。\n\n你从电脑上传的图片会被压缩后继续加入卡片，但只保存在当前浏览器，不能保证换浏览器或手机可见，也不会再写进 D1。\n\n要让图片跨浏览器/手机稳定显示：把图片放到仓库 assets/images/ 里，然后点“管图” -> “添加静态路径”，例如 assets/images/food/canteen-01.jpg。");
-  }
-
   async function uploadImagesToCloud(slot, dataUrls) {
-    // 当前项目没有 R2，前端不再强制调用 /api/upload。
-    // 保留这个函数只是为了以后真的绑定 R2 时便于恢复，不影响现有无 R2 方案。
-    console.info("R2 upload is disabled for no-R2 mode.", slot, dataUrls.length);
-    return null;
+    const uploaded = [];
+    for (const dataUrl of dataUrls) {
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-admin-token": getOwnerToken()
+          },
+          body: JSON.stringify({ slot, dataUrl })
+        });
+        if (!response.ok) throw new Error(`Image upload failed: ${response.status}`);
+        const payload = await response.json();
+        if (payload && payload.url) uploaded.push(payload.url);
+      } catch (error) {
+        showCloudError("图片上传到云端失败，已停止本次加图。", error);
+        return uploaded;
+      }
+    }
+    return uploaded;
   }
 
   function wireLabUploads() {
@@ -1235,9 +1101,6 @@
   }
 
   function loadPins(sectionId) {
-    if (state.content && state.content.pins && Array.isArray(state.content.pins[sectionId])) {
-      return state.content.pins[sectionId];
-    }
     try {
       const saved = JSON.parse(localStorage.getItem(pinStorageKey(sectionId)) || "null");
       if (Array.isArray(saved)) return saved;
@@ -1271,11 +1134,9 @@
   }
 
   function savePins(sectionId, pins) {
-    const clean = Array.isArray(pins) ? pins : [];
-    if (!state.content.pins || typeof state.content.pins !== "object") state.content.pins = {};
-    state.content.pins[sectionId] = clean;
-    safeSetItem(pinStorageKey(sectionId), JSON.stringify(clean), "地图点位");
-    return saveContent();
+    var ok = safeSetItem(pinStorageKey(sectionId), JSON.stringify(pins), "地图点位");
+    scheduleCloudSave();
+    return ok;
   }
 
   function selectMapElement(sectionId, elementId) {
@@ -1372,30 +1233,11 @@
     `;
   }
 
-  function migrateLocalAmapCredentials() {
-    if (!state.content) return false;
-    const settings = state.content.settings && state.content.settings.amap ? state.content.settings.amap : {};
-    let localKey = "";
-    let localSecurity = "";
-    try {
-      localKey = localStorage.getItem(amapKeyStorageKey) || "";
-      localSecurity = localStorage.getItem(amapSecurityStorageKey) || "";
-    } catch (error) {
-      return false;
-    }
-    if (!localKey || settings.key) return false;
-    if (!state.content.settings || typeof state.content.settings !== "object") state.content.settings = {};
-    state.content.settings.amap = { key: localKey.trim(), securityJsCode: localSecurity.trim() };
-    saveContent();
-    return true;
-  }
-
   function getAmapCredentials() {
     const config = data.university.campusMap || {};
-    const settings = state.content && state.content.settings && state.content.settings.amap ? state.content.settings.amap : {};
     return {
-      key: settings.key || localStorage.getItem(amapKeyStorageKey) || config.apiKey || "",
-      securityJsCode: settings.securityJsCode || localStorage.getItem(amapSecurityStorageKey) || config.securityJsCode || ""
+      key: localStorage.getItem(amapKeyStorageKey) || config.apiKey || "",
+      securityJsCode: localStorage.getItem(amapSecurityStorageKey) || config.securityJsCode || ""
     };
   }
 
@@ -1404,15 +1246,9 @@
     const current = getAmapCredentials();
     const key = prompt("粘贴高德 Web 端 JS API Key", current.key);
     if (key === null) return;
+    if (!safeSetItem(amapKeyStorageKey, key.trim(), "高德地图 Key")) return;
     const code = prompt("安全密钥 securityJsCode，可留空", current.securityJsCode);
-    if (code === null) return;
-    const next = { key: key.trim(), securityJsCode: code.trim() };
-    if (!state.content.settings || typeof state.content.settings !== "object") state.content.settings = {};
-    state.content.settings.amap = next;
-    safeSetItem(amapKeyStorageKey, next.key, "高德地图 Key");
-    safeSetItem(amapSecurityStorageKey, next.securityJsCode, "高德地图安全密钥");
-    saveContent();
-    alert("高德地图 Key 已保存。等云端同步成功后，无痕窗口和手机也会使用同一个地图配置。");
+    if (code !== null && !safeSetItem(amapSecurityStorageKey, code.trim(), "高德地图安全密钥")) return;
     initAmapMaps(true);
   }
 
@@ -1429,26 +1265,96 @@
     refreshIcons();
   }
 
+  /* ================================================================
+     MapInitQueue — 串行化 new AMap.Map()，防 WebGL Shader 竞争白屏
+     ================================================================ */
+  var _mapQueue = [];
+  var _mapQueueRunning = 0;
+
+  function mapQueueEnqueue(factory) {
+    return new Promise(function (resolve, reject) {
+      _mapQueue.push({ factory: factory, resolve: resolve, reject: reject });
+      _mapQueueDrain();
+    });
+  }
+
+  function _mapQueueDrain() {
+    while (_mapQueueRunning < 1 && _mapQueue.length > 0) {
+      var task = _mapQueue.shift();
+      _mapQueueRunning++;
+      try {
+        var map = task.factory();
+        Promise.resolve(map).then(function (m) {
+          _waitMapComplete(m).then(function () { task.resolve(m); _mapQueueRunning--; _mapQueueDrain(); }).catch(task.reject);
+        }).catch(task.reject);
+      } catch (err) {
+        task.reject(err);
+        _mapQueueRunning--;
+        _mapQueueDrain();
+      }
+    }
+  }
+
+  function _waitMapComplete(map) {
+    return new Promise(function (resolve) {
+      if (map._isComplete) { resolve(); return; }
+      map.on('complete', function () { map._isComplete = true; resolve(); });
+    });
+  }
+
+  /* ================================================================
+     MapPreloader — 1×1px 隐形预热，确保首个正式地图不白屏
+     ================================================================ */
+  var _preloaderDone = false;
+  var _preloaderPromise = null;
+
+  // 全局持有预热实例引用，确保不被 GC 回收导致 WebGL 上下文丢失
+  var _warmMapRef = null;
+
+  function preheatAMap(AMap) {
+    if (_preloaderDone) return Promise.resolve();
+    if (_preloaderPromise) return _preloaderPromise;
+    _preloaderPromise = new Promise(function (resolve) {
+      var mapConfig = data.university.campusMap || {};
+      var center = mapConfig.center || [113.920343, 30.936542];
+      var zoom = mapConfig.zoom || 16;
+      // 使用和正式地图相同的 center/zoom/layers，触发相同 Shader 编译
+      var container = document.createElement('div');
+      container.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:200px;height:200px;pointer-events:none;';
+      document.body.appendChild(container);
+      var warmMap = new AMap.Map(container, { zoom: zoom, center: center, viewMode: '2D' });
+      _warmMapRef = warmMap;
+      warmMap.on('complete', function () {
+        // 等 2.5 秒让移动端 Shader 完全编译并缓存到 HTTP
+        // 不销毁预热实例 — 移动端销毁 WebGL 上下文会导致共享 Shader 缓存失效
+        setTimeout(function () {
+          _preloaderDone = true;
+          resolve();
+        }, 2500);
+      });
+      setTimeout(function () {
+        _preloaderDone = true;
+        resolve();
+      }, 10000);
+    });
+    return _preloaderPromise;
+  }
+
   function ensureAmapLoader() {
     if (window.AMapLoader) return Promise.resolve(window.AMapLoader);
     return new Promise((resolve, reject) => {
-      const done = () => {
-        if (window.AMapLoader) resolve(window.AMapLoader);
-        else reject(new Error("AMapLoader script loaded but window.AMapLoader is missing."));
-      };
-      const existing = document.querySelector('script[src*="webapi.amap.com/loader.js"], script[data-amap-loader="true"]');
+      const existing = document.querySelector('script[data-amap-loader="true"]');
       if (existing) {
-        existing.addEventListener("load", done, { once: true });
-        existing.addEventListener("error", () => reject(new Error("AMap loader script failed to load.")), { once: true });
-        setTimeout(done, 1200);
+        existing.addEventListener("load", () => resolve(window.AMapLoader));
+        existing.addEventListener("error", reject);
         return;
       }
       const script = document.createElement("script");
       script.src = "https://webapi.amap.com/loader.js";
       script.async = true;
       script.dataset.amapLoader = "true";
-      script.addEventListener("load", done, { once: true });
-      script.addEventListener("error", () => reject(new Error("AMap loader script failed to load.")), { once: true });
+      script.addEventListener("load", () => resolve(window.AMapLoader));
+      script.addEventListener("error", reject);
       document.head.appendChild(script);
     });
   }
@@ -1469,116 +1375,70 @@
     const credentials = getAmapCredentials();
     destroyMaps();
     if (!credentials.key) {
-      showMapNotice("当前未设置高德地图 Key。进入开发者权限后点“设置 Key”，保存到云端后换浏览器/手机才会显示。");
+      showMapNotice("当前未设置高德地图 Key。");
       return;
     }
     if (credentials.securityJsCode) {
       window._AMapSecurityConfig = { securityJsCode: credentials.securityJsCode };
     }
 
-    if (forceReload) {
-      state.amapLoading = null;
-      state.AMap = null;
-    }
-
-    if (!state.amapLoading) {
+    if (!state.amapLoading || forceReload) {
       state.amapLoading = ensureAmapLoader()
-        .then((loader) => {
-          if (!loader || typeof loader.load !== "function") throw new Error("AMapLoader.load is unavailable.");
-          return loader.load({
-            key: credentials.key,
-            version: mapConfig.version || "2.0",
-            plugins: ["AMap.Scale", "AMap.ToolBar"]
-          });
-        })
+        .then((loader) => loader.load({
+          key: credentials.key,
+          version: mapConfig.version || "2.0",
+          plugins: ["AMap.Scale", "AMap.ToolBar"]
+        }))
         .then((AMap) => {
           state.AMap = AMap;
-          return AMap;
+          // 预热：1×1px 隐形 map 确保 WebGL Shader 缓存就绪
+          return preheatAMap(AMap).then(function () { return AMap; });
         });
     }
 
     state.amapLoading
       .then((AMap) => {
-        // 预热：先建 1x1 隐形 map 触发 AMap 加载 WebGL shader 等内部资源，
-        // 等 complete 后销毁，再创建正式 map。修复手机端首屏白屏（shader 编译 null 导致）
-        const warmup = document.createElement("div");
-        warmup.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;pointer-events:none;";
-        document.body.appendChild(warmup);
-        const wm = new AMap.Map(warmup, {
-          viewMode: "2D", zoom: 1, center: [0, 0], mapStyle: "amap://styles/normal"
-        });
-        wm.on("complete", () => {
-          wm.destroy();
-          warmup.remove();
-          setTimeout(() => {
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                state.content.sections.forEach((section) => initSectionMap(AMap, section));
-              });
-            });
-          }, 200);
+        // 所有 section map 通过串行队列创建，杜绝 Shader 竞争白屏
+        state.content.sections.forEach((section) => {
+          mapQueueEnqueue(function () {
+            return initSectionMap(AMap, section);
+          });
         });
       })
       .catch((error) => {
         console.warn("AMap could not be loaded.", error);
-        showMapNotice("高德地图加载失败。请检查：Key 类型是否为 Web端 JS API、securityJsCode 是否填写、域名白名单是否包含 hgcjlxz.pages.dev、当前浏览器是否能访问高德地图脚本。");
+        showMapNotice("高德地图加载失败，请检查 Key、网络或安全密钥。");
       });
   }
 
   function initSectionMap(AMap, section) {
     const mapConfig = data.university.campusMap || {};
     const mapEl = $(`#map-${cssEscape(section.id)}`);
-    if (!mapEl) return;
-
-    // 用 computed style 强制设置容器宽高，确保 AMap 拿到非零尺寸
-    const cs = getComputedStyle(mapEl);
-    const w = parseFloat(cs.width) || mapEl.offsetWidth || mapEl.clientWidth;
-    const h = parseFloat(cs.height) || mapEl.offsetHeight || mapEl.clientHeight;
-    if (w > 0) mapEl.style.width = w + "px";
-    if (h > 0) mapEl.style.height = h + "px";
-
+    if (!mapEl) return null;
     mapEl.innerHTML = "";
     const center = mapConfig.center || [113.920343, 30.936542];
-    let map;
-    try {
-      map = new AMap.Map(mapEl, {
-        viewMode: mapConfig.viewMode || "2D",
-        zoom: mapConfig.zoom || 16,
-        center,
-        resizeEnable: true,
-        mapStyle: mapConfig.mapStyle || "amap://styles/normal"
-      });
-    } catch (error) {
-      console.warn("AMap section map could not be initialized.", error);
-      mapEl.innerHTML = `<div class="map-notice"><strong>这个地图容器初始化失败，请检查高德 Key 和浏览器兼容性。</strong></div>`;
-      return;
-    }
+    const satellite = new AMap.TileLayer.Satellite();
+    const roadNet = new AMap.TileLayer.RoadNet();
+    const map = new AMap.Map(mapEl, {
+      viewMode: mapConfig.viewMode || "2D",
+      zoom: mapConfig.zoom || 16,
+      center,
+      resizeEnable: true,
+      mapStyle: mapConfig.mapStyle || "amap://styles/normal",
+      layers: [satellite, roadNet]
+    });
 
-    try { map.addControl(new AMap.Scale()); } catch (error) { console.warn("AMap scale control failed.", error); }
-    try { map.addControl(new AMap.ToolBar({ position: "RT" })); } catch (error) { console.warn("AMap toolbar control failed.", error); }
+    map.addControl(new AMap.Scale());
+    map.addControl(new AMap.ToolBar({ position: "RT" }));
     map.on("click", (event) => {
       if (!state.ownerUnlocked) return;
       placePin(section.id, [event.lnglat.getLng(), event.lnglat.getLat()]);
     });
-    map.on("complete", () => {
-      setTimeout(() => {
-        if (map && typeof map.resize === "function") { map.resize(); try { map.setZoom(map.getZoom()); } catch(e) {} }
-      }, 200);
-      setTimeout(() => {
-        if (map && typeof map.resize === "function") { map.resize(); try { map.setZoom(map.getZoom()); } catch(e) {} }
-      }, 600);
-    });
-    // 兜底 resize + 强制 tile 刷新：手机端首屏 map 的 canvas 可能需要显式触发重绘
-    setTimeout(() => {
-      if (map && typeof map.resize === "function") {
-        map.resize();
-        try { map.setZoom(map.getZoom()); } catch(e) {}
-      }
-    }, 1200);
 
     state.maps[section.id] = map;
     state.markers[section.id] = [];
     renderPins(section.id);
+    return map;
   }
 
   function renderPins(sectionId) {
@@ -1693,66 +1553,6 @@
     section.icon = iconName.trim() || "map-pinned";
     section.accent = /^#[0-9a-fA-F]{3,8}$/.test(accent.trim()) ? accent.trim() : (section.accent || nextAccent());
     if (!saveContent()) return;
-    rerenderEditableArea();
-  }
-
-  function ensureSectionToneEditorShell() {
-    if ($("#sectionToneEditor")) return;
-    document.body.insertAdjacentHTML("beforeend", `
-      <aside class="content-editor" id="sectionToneEditor" aria-hidden="true" aria-label="编辑板块描述">
-        <form class="content-editor-panel" id="sectionToneEditorForm">
-          <div class="lab-header">
-            <div>
-              <p class="eyebrow">Section Description</p>
-              <h2 id="sectionToneEditorTitle">编辑板块描述</h2>
-            </div>
-            <button class="icon-button" type="button" data-close-section-tone-editor aria-label="关闭编辑">
-              ${icon("x")}
-            </button>
-          </div>
-          <div class="editor-fields">
-            <label>板块描述<textarea name="tone" rows="9" placeholder="输入显示在板块标题下方的描述文字"></textarea></label>
-          </div>
-          <div class="editor-actions">
-            <button class="tool-button" type="submit">${icon("save")}<span>保存描述</span></button>
-          </div>
-        </form>
-      </aside>
-    `);
-  }
-
-  function openSectionToneEditor(sectionId) {
-    if (!requireOwner("编辑板块描述")) return;
-    const section = getSection(sectionId);
-    if (!section) return;
-    ensureSectionToneEditorShell();
-    state.sectionToneEditor = { sectionId };
-    const form = $("#sectionToneEditorForm");
-    const editor = $("#sectionToneEditor");
-    $("#sectionToneEditorTitle").textContent = `编辑「${section.label}」描述`;
-    form.tone.value = section.tone || "";
-    editor.classList.add("is-open");
-    editor.setAttribute("aria-hidden", "false");
-    form.tone.focus();
-    refreshIcons();
-  }
-
-  function closeSectionToneEditor() {
-    const editor = $("#sectionToneEditor");
-    if (!editor) return;
-    editor.classList.remove("is-open");
-    editor.setAttribute("aria-hidden", "true");
-    state.sectionToneEditor = null;
-  }
-
-  function saveSectionToneFromEditor(form) {
-    if (!requireOwner("保存板块描述")) return;
-    if (!state.sectionToneEditor) return;
-    const section = getSection(state.sectionToneEditor.sectionId);
-    if (!section) return;
-    section.tone = form.tone.value.trim();
-    if (!saveContent()) return;
-    closeSectionToneEditor();
     rerenderEditableArea();
   }
 
@@ -1983,7 +1783,7 @@
 
   function clearLocalImageCache() {
     if (!requireOwner("清空本地图片缓存")) return;
-    const ok = confirm("清空本地图片缓存会删除这个浏览器里临时保存的 data:image 图片。\n\n它不会删除已同步到云端的 assets/images 静态路径，也不会删除卡片文字、元素、点位。\n\n确定清空吗？");
+    const ok = confirm("清空本地图片缓存会删除这个浏览器里所有已上传图片。\n\n建议你先点右上角“导出备份”。如果已经因为存储满了无法继续上传，可以清空后重新上传图片。\n\n确定清空吗？");
     if (!ok) return;
     try {
       const keys = [];
@@ -1994,7 +1794,7 @@
       keys.forEach((key) => localStorage.removeItem(key));
       state.activeImageIndex = {};
       rerenderEditableArea();
-      alert("本地临时图片缓存已清空。\n\n注意：卡片文字、元素、点位、已同步的静态图片路径都没有被清空。");
+      alert("本地图片缓存已清空。现在可以重新上传图片。\n\n注意：卡片文字、元素、点位没有被清空。只清空了浏览器里存的图片。");
     } catch (error) {
       console.warn("Image cache cleanup failed.", error);
       alert("清理失败。请按我给你的浏览器清理步骤，在浏览器设置里清理这个网站的数据。");
@@ -2003,8 +1803,9 @@
 
   function clearSlotImages(slot, title) {
     if (!requireOwner("清理这个图片槽")) return;
-    if (!confirm(`清空「${title || slot}」这个图片槽里的图片？\n\n会删除这个槽位的本机临时图片和已同步静态路径，但不会删除卡片文字。`)) return;
-    saveImages(slot, []);
+    if (!confirm(`清空「${title || slot}」这个图片槽里的图片？\n\n只会删除这个槽位的图片，不会删除卡片文字。`)) return;
+    safeRemoveItem(imageListStorageKey(slot));
+    safeRemoveItem(storageKey(slot));
     delete state.activeImageIndex[slot];
     rerenderEditableArea();
   }
@@ -2023,7 +1824,7 @@
       app: "hbeu-freshman-site",
       version: CONTENT_VERSION,
       exportedAt: new Date().toISOString(),
-      content: { version: CONTENT_VERSION, sections: state.content.sections, qas: getQas(), settings: state.content.settings || {}, pins: state.content.pins || {} },
+      content: { version: CONTENT_VERSION, sections: state.content.sections, qas: getQas() },
       imageStacks,
       pins
     };
@@ -2048,22 +1849,25 @@
           alert("这个文件不是有效的网站备份 JSON。");
           return;
         }
-        if (!confirm("导入备份会覆盖当前卡片、图片路径和点位。确定继续？")) return;
-
-        state.content = {
-          sections: backup.content.sections.map(normalizeSection),
-          qas: Array.isArray(backup.content.qas) ? backup.content.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : (Array.isArray(backup.qas) ? backup.qas.map(normalizeQaItem).filter((item) => item.question || item.answer) : []),
-          settings: backup.content.settings && typeof backup.content.settings === "object" ? backup.content.settings : {},
-          pins: backup.content.pins && typeof backup.content.pins === "object" ? backup.content.pins : (backup.pins && typeof backup.pins === "object" ? backup.pins : {})
-        };
-
+        if (!confirm("导入备份会覆盖当前浏览器里的卡片、图片和点位。确定继续？")) return;
+        const contentOk = safeSetItem(contentStorageKey, JSON.stringify({
+          version: CONTENT_VERSION,
+          sections: backup.content.sections,
+          qas: Array.isArray(backup.content.qas) ? backup.content.qas : (Array.isArray(backup.qas) ? backup.qas : [])
+        }), "备份内容");
+        if (!contentOk) return;
         Object.entries(backup.imageStacks || {}).forEach(([slot, images]) => {
           if (Array.isArray(images)) saveImages(slot, images);
         });
-
-        if (!saveContent()) return;
+        Object.entries(backup.pins || {}).forEach(([sectionId, pins]) => {
+          if (Array.isArray(pins)) savePins(sectionId, pins);
+        });
+        state.content = loadContent();
         rerenderEditableArea();
-        alert("备份导入完成。静态图片路径会同步到云端；备份里如果有 data:image 图片，只会保留在当前浏览器。");
+        // 强制启用云端同步并立即推送
+        state.cloud.enabled = true;
+        scheduleCloudSave();
+        alert("备份导入完成，已同步到云端。建议刷新页面检查一次。");
       } catch (error) {
         console.warn("Backup import failed.", error);
         alert("导入失败：JSON 文件格式不正确，或文件内容过大。");
@@ -2084,10 +1888,9 @@
             </div>
             <button class="icon-button" type="button" data-close-image-manager aria-label="关闭图片编辑器">${icon("x")}</button>
           </div>
-          <p class="lab-copy">这里可以单张删除图片、调整顺序、把某张设为封面。跨浏览器/手机稳定显示，请优先把图片放进 <code>assets/images</code>，再添加静态路径。</p>
+          <p class="lab-copy">这里可以单张删除图片、调整顺序、把某张设为封面，也可以继续追加图片。第一张图片就是卡片封面。</p>
           <div class="image-manager-tools">
-            <button class="tool-button" type="button" data-manager-add-paths>${icon("link")}<span>添加静态路径</span></button>
-            <button class="tool-button ghost" type="button" data-manager-add-images>${icon("image-plus")}<span>本机临时加图</span></button>
+            <button class="tool-button" type="button" data-manager-add-images>${icon("image-plus")}<span>继续加图</span></button>
             <button class="tool-button danger" type="button" data-manager-clear-images>${icon("eraser")}<span>清空本卡图片</span></button>
           </div>
           <div class="image-manager-list" id="imageManagerList"></div>
@@ -2127,7 +1930,7 @@
       list.innerHTML = `
         <div class="image-manager-empty">
           <strong>这个卡片还没有图片。</strong>
-          <span>推荐点"添加静态路径"，例如 assets/images/food/canteen-01.jpg；"本机临时加图"只在当前浏览器显示。</span>
+          <span>点上面的"继续加图"，选择电脑里的图片即可。</span>
         </div>
       `;
       refreshIcons();
@@ -2138,7 +1941,7 @@
         <div class="manager-thumb" style="background-image:url('${escapeHtml(src)}')"></div>
         <div class="manager-info">
           <strong>${index === 0 ? "封面图片" : `第 ${index + 1} 张`}</strong>
-          <small>${index + 1}/${images.length} · ${isCloudSafeImageSrc(src) ? "静态路径/可同步" : "本机临时"}</small>
+          <small>${index + 1}/${images.length}</small>
         </div>
         <div class="manager-actions">
           <button class="upload-mini ghost" type="button" data-manager-cover="${index}" ${index === 0 ? "disabled" : ""}>${icon("star")}<span>设封面</span></button>
@@ -2166,100 +1969,6 @@
       manager.setAttribute("aria-hidden", "false");
     }
     return true;
-  }
-
-  function parseImagePathInput(value) {
-    return dedupeImageList(String(value || "")
-      .split(/[\r\n,]+/)
-      .map((item) => item.trim().replace(/^['"]|['"]$/g, ""))
-      .filter(isCloudSafeImageSrc));
-  }
-
-  function batchAddStaticPaths() {
-    if (!requireOwner("批量添加静态路径")) return;
-    const slotSelect = $("[data-batch-slot]");
-    const textarea = $("[data-batch-paths]");
-    if (!slotSelect || !textarea) return;
-    const slot = slotSelect.value;
-    const text = textarea.value.trim();
-    if (!slot || !text) {
-      alert("请先选择目标卡片，再粘贴图片路径（每行一条）。");
-      return;
-    }
-    const paths = parseImagePathInput(text);
-    if (!paths.length) {
-      alert("没有识别到有效图片路径。请填写 assets/images/... 或 https://...，不要粘贴 data:image/base64。");
-      return;
-    }
-    const existing = getImages(slot, "");
-    const next = dedupeImageList(existing.concat(paths));
-    if (!saveImages(slot, next)) {
-      alert("保存失败，可能路径数量过多或浏览器存储已满。");
-      return;
-    }
-    textarea.value = "";
-    state.activeImageIndex[slot] = Math.max(0, next.length - paths.length);
-    rerenderEditableArea();
-    alert(`已添加 ${paths.length} 条路径到 "${slotSelect.options[slotSelect.selectedIndex].text}"（去重后共 ${next.length} 张）。云端同步后换设备可见。`);
-  }
-
-  async function migrateLocalImagesToStatic() {
-    if (!requireOwner("迁移图片")) return;
-    const migrations = [];
-    getAllSlots().forEach((slot) => {
-      getImages(slot, "").forEach((src, index) => {
-        if (isDataImageSrc(src)) migrations.push({ slot, src, index });
-      });
-    });
-    if (!migrations.length) {
-      alert("没有需要迁移的临时图片。所有图片已经是静态路径或外链。");
-      return;
-    }
-    const ok = confirm(`找到 ${migrations.length} 张临时 base64 图片。\n\n点击确定后浏览器会逐个弹出下载窗口，请全部保存到 assets/images/ 文件夹。\n\n下载完成后，对应的静态路径会自动添加到卡片。`);
-    if (!ok) return;
-    for (const item of migrations) {
-      const ext = item.src.indexOf("data:image/png") === 0 ? "png" : "jpg";
-      const filename = `migrated_${item.slot}_${item.index}.${ext}`;
-      const a = document.createElement("a");
-      a.href = item.src;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      await new Promise((r) => setTimeout(r, 300));
-    }
-    let allPaths = [];
-    migrations.forEach(({ slot, index }) => {
-      const ext = "jpg";
-      const path = `assets/images/migrated_${slot}_${index}.${ext}`;
-      allPaths.push({ slot, path });
-    });
-    const slotMap = {};
-    allPaths.forEach(({ slot, path }) => {
-      if (!slotMap[slot]) slotMap[slot] = getImages(slot, "");
-      slotMap[slot].push(path);
-    });
-    Object.entries(slotMap).forEach(([slot, images]) => saveImages(slot, dedupeImageList(images)));
-    alert(`下载完成！已自动为 ${migrations.length} 张图片添加静态路径。\n\n下一步：\n1. 把下载的图片全部放入 assets/images/ 文件夹\n2. 提交推送到 GitHub\n3. 部署后换设备也能看到`);
-    rerenderEditableArea();
-  }
-
-  function addStaticImagePathsFromManager() {
-    if (!state.imageManager || !requireOwner("添加静态图片路径")) return;
-    const { slot, title } = state.imageManager;
-    const text = prompt(`给「${title}」添加静态图片路径，每行一张。\n\n例：assets/images/food/canteen-01.jpg\n也可以用 https:// 开头的外链图片。\n\n注意：这里不要粘贴 data:image/base64。`, "assets/images/");
-    if (text === null) return;
-    const paths = parseImagePathInput(text);
-    if (!paths.length) {
-      alert("没有识别到有效图片路径。请填写 assets/images/... 或 https://...，不要粘贴 base64。");
-      return;
-    }
-    const before = getImages(slot, "");
-    const next = dedupeImageList(before.concat(paths));
-    const trimmed = before.length + paths.length - next.length;
-    if (!saveManagedImages(next, Math.max(0, next.length - paths.length))) return;
-    if (trimmed > 0) alert(`这个图片槽最多保留 ${MAX_IMAGES_PER_SLOT} 张，已自动去重或移除最早的 ${trimmed} 张。`);
-    else alert("静态图片路径已加入。云端同步成功后，换浏览器和手机也能看到。");
   }
 
   function addImagesFromManager() {
@@ -2408,9 +2117,7 @@
       const deletePinButton = event.target.closest("[data-delete-pin]");
       const pinOpen = event.target.closest("[data-pin-open]");
       const imageButton = event.target.closest("[data-image-step][data-image-slot]");
-      const deleteImageButton = event.target.closest("[data-delete-active-image]");
       const manageImagesButton = event.target.closest("[data-manage-images]");
-      const editSectionToneButton = event.target.closest("[data-edit-section-tone]");
       const editSectionButton = event.target.closest("[data-edit-section]");
       const deleteSectionButton = event.target.closest("[data-delete-section]");
 
@@ -2418,16 +2125,8 @@
         cycleImage(imageButton.dataset.imageSlot, Number(imageButton.dataset.imageStep));
         return;
       }
-      if (deleteImageButton) {
-        deleteActiveImage(deleteImageButton.dataset.deleteActiveImage);
-        return;
-      }
       if (manageImagesButton) {
         openImageManager(manageImagesButton.dataset.manageImages, manageImagesButton.dataset.manageTitle || "卡片图片");
-        return;
-      }
-      if (editSectionToneButton) {
-        openSectionToneEditor(editSectionToneButton.dataset.editSectionTone);
         return;
       }
       if (editSectionButton) {
@@ -2476,7 +2175,6 @@
       if (event.target.closest("[data-add-qa]")) openQaEditor(null);
       if (event.target.closest("[data-close-editor]")) closeCardEditor();
       if (event.target.closest("[data-close-qa-editor]")) closeQaEditor();
-      if (event.target.closest("[data-close-section-tone-editor]")) closeSectionToneEditor();
       if (event.target.closest("[data-close-image-manager]")) closeImageManager();
       if (event.target.closest("[data-image-viewer-close]")) closeImageViewer();
       const editQa = event.target.closest("[data-edit-qa]");
@@ -2509,11 +2207,8 @@
       if (editor && event.target === editor) closeCardEditor();
       const qaEditor = $("#qaEditor");
       if (qaEditor && event.target === qaEditor) closeQaEditor();
-      const sectionToneEditor = $("#sectionToneEditor");
-      if (sectionToneEditor && event.target === sectionToneEditor) closeSectionToneEditor();
       const manager = $("#imageManager");
       if (manager && event.target === manager) closeImageManager();
-      if (event.target.closest("[data-manager-add-paths]")) addStaticImagePathsFromManager();
       if (event.target.closest("[data-manager-add-images]")) addImagesFromManager();
       if (event.target.closest("[data-manager-clear-images]")) clearManagedImages();
       const deleteManaged = event.target.closest("[data-manager-delete]");
@@ -2535,10 +2230,6 @@
         event.preventDefault();
         saveQaFromEditor(event.target);
       }
-      if (event.target.matches("#sectionToneEditorForm")) {
-        event.preventDefault();
-        saveSectionToneFromEditor(event.target);
-      }
     });
 
     document.addEventListener("click", (event) => {
@@ -2556,11 +2247,6 @@
         clearLocalImageCache();
         return;
       }
-      const migrateBtn = event.target.closest("[data-migrate-images]");
-      if (migrateBtn) {
-        migrateLocalImagesToStatic();
-        return;
-      }
       const manageInLab = event.target.closest("[data-manage-images]");
       if (manageInLab) {
         openImageManager(manageInLab.dataset.manageImages, manageInLab.dataset.manageTitle || "图片槽");
@@ -2569,10 +2255,6 @@
       const clearSlot = event.target.closest("[data-clear-slot-images]");
       if (clearSlot) {
         clearSlotImages(clearSlot.dataset.clearSlotImages, clearSlot.dataset.clearSlotTitle);
-      }
-      const batchAdd = event.target.closest("[data-batch-add-paths]");
-      if (batchAdd) {
-        batchAddStaticPaths();
       }
     });
 
@@ -2599,33 +2281,6 @@
       topbar.dataset.elevated = window.scrollY > 16 ? "true" : "false";
       backTop.classList.toggle("is-visible", window.scrollY > 680);
       updateActiveNav();
-      // 侧边栏：滚到板块区域时自动固定，离开时恢复
-      const modules = document.getElementById("modules");
-      const rail = document.querySelector(".module-rail");
-      if (modules && rail) {
-        const r = modules.getBoundingClientRect();
-        const shouldPin = r.top <= 96 && r.bottom > 150;
-        if (shouldPin && rail.dataset.pinned !== "true") {
-          const railRect = rail.getBoundingClientRect();
-          rail.style.width = railRect.width + "px";
-          rail.style.left = railRect.left + "px";
-          rail.dataset.pinned = "true";
-        } else if (!shouldPin && rail.dataset.pinned === "true") {
-          rail.dataset.pinned = "false";
-          rail.style.left = "";
-          rail.style.width = "";
-        }
-      }
-    }, { passive: true });
-
-    let resizeTimer = null;
-    window.addEventListener("resize", () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        Object.values(state.maps).forEach((map) => {
-          if (map && typeof map.resize === "function") map.resize();
-        });
-      }, 180);
     }, { passive: true });
 
     document.addEventListener("keydown", (event) => {
@@ -2793,7 +2448,6 @@
   async function init() {
     state.content = loadContent();
     await loadCloudState();
-    if (state.ownerUnlocked) migrateLocalAmapCredentials();
     cleanupDuplicateLegacyImageStorage();
     buildRoutes();
     buildNavigation();

@@ -7,8 +7,8 @@ window.HBEU_SITE_DATA = {
     heroImage: "",
     heroSlot: "hero-campus",
     campusMap: {
-      apiKey: "",
-      securityJsCode: "",
+      apiKey: "57667e129a3a2d42ad0d109634c006c9",
+      securityJsCode: "423517740c364896e3526b49218d76d3",
       version: "2.0",
       center: [113.920343, 30.936542],
       zoom: 16,
