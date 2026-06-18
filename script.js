@@ -1551,15 +1551,18 @@
     });
     map.on("complete", () => {
       setTimeout(() => {
-        if (map && typeof map.resize === "function") map.resize();
+        if (map && typeof map.resize === "function") { map.resize(); try { map.setZoom(map.getZoom()); } catch(e) {} }
       }, 200);
       setTimeout(() => {
-        if (map && typeof map.resize === "function") map.resize();
+        if (map && typeof map.resize === "function") { map.resize(); try { map.setZoom(map.getZoom()); } catch(e) {} }
       }, 600);
     });
-    // 兜底 resize：手机端 complete 事件可能不触发或晚于预期
+    // 兜底 resize + 强制 tile 刷新：手机端首屏 map 的 canvas 可能需要显式触发重绘
     setTimeout(() => {
-      if (map && typeof map.resize === "function") map.resize();
+      if (map && typeof map.resize === "function") {
+        map.resize();
+        try { map.setZoom(map.getZoom()); } catch(e) {}
+      }
     }, 1200);
 
     state.maps[section.id] = map;
