@@ -173,6 +173,12 @@ body:not(.owner-unlocked) .pin-list {
   display: none !important;
 }
 
+#toggleOwner {
+  display: none;
+}
+body.show-admin-entry #toggleOwner {
+  display: inline-flex;
+}
 .owner-button {
   display: inline-flex;
   align-items: center;

@@ -382,9 +382,13 @@
     }
     setOwnerUnlocked(true);
     state.cloud.enabled = true;
-    // 拉取云端数据并刷新页面
+    // 拉取云端数据并刷新页面，然后将本地点位推送到云端
     loadCloudState().then(function (ok) {
-      if (ok) { rerenderEditableArea(); }
+      rerenderEditableArea();
+      if (ok) {
+        // 本地有点位但云端没有 → 推送
+        scheduleCloudSave();
+      }
     });
     return true;
   }
@@ -914,6 +918,11 @@
     $$('[data-pin-open]').forEach((pinRow) => {
       const active = state.sectionFilters[pinRow.dataset.pinSection] || '';
       pinRow.classList.toggle('is-active', pinRow.dataset.pinElement === active);
+    });
+
+    // 卡片过滤后 DOM 变动可能触发移动端 WebGL 上下文丢失，延迟 resize 修复灰屏
+    Object.values(state.maps).forEach(function (m) {
+      if (m && m.resize) { setTimeout(function () { m.resize(); }, 150); }
     });
   }
 
@@ -2450,6 +2459,10 @@
   }
 
   async function init() {
+    // 密链入口：只有知道 ?edit 的人才能看到"开发者权限"按钮
+    if (location.search.includes('edit')) {
+      document.body.classList.add('show-admin-entry');
+    }
     state.content = loadContent();
     await loadCloudState();
     cleanupDuplicateLegacyImageStorage();
