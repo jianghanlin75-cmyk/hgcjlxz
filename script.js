@@ -1507,9 +1507,14 @@
       placePin(section.id, [event.lnglat.getLng(), event.lnglat.getLat()]);
     });
     map.on("complete", () => {
+      // 第一轮 resize 等容器渲染稳定后再触发
       setTimeout(() => {
         if (map && typeof map.resize === "function") map.resize();
-      }, 80);
+      }, 200);
+      // 第二轮 resize 兜底手机端较慢的布局完成
+      setTimeout(() => {
+        if (map && typeof map.resize === "function") map.resize();
+      }, 600);
     });
 
     state.maps[section.id] = map;
@@ -2452,6 +2457,16 @@
       topbar.dataset.elevated = window.scrollY > 16 ? "true" : "false";
       backTop.classList.toggle("is-visible", window.scrollY > 680);
       updateActiveNav();
+    }, { passive: true });
+
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        Object.values(state.maps).forEach((map) => {
+          if (map && typeof map.resize === "function") map.resize();
+        });
+      }, 180);
     }, { passive: true });
 
     document.addEventListener("keydown", (event) => {

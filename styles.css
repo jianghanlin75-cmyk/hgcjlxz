@@ -870,6 +870,7 @@ body:not(.owner-unlocked) .owner-only {
 }
 
 .satellite-map {
+  width: 100%;
   height: 520px;
   min-height: 520px;
   background: #d8d6ce;
@@ -919,12 +920,18 @@ body:not(.owner-unlocked) .owner-only {
 }
 
 .pin-list {
+  display: none;
   min-height: 34px;
   padding: 10px;
   background: rgba(247, 245, 239, .72);
   color: var(--muted);
   font-size: .82rem;
   line-height: 1.55;
+  overflow-x: auto;
+}
+
+body.owner-unlocked .pin-list {
+  display: block;
 }
 
 .pin-list strong {
