@@ -1079,6 +1079,7 @@
       const result = await uploadImagesToCloud(slot, incoming);
       incoming = result.images;
       if (result.failed > 0) notifyImageFallback();
+      if (result.pending > 0) notifyImageDeploying();
     }
     const combined = existing.concat(incoming);
     const nextImages = combined.slice(-MAX_IMAGES_PER_SLOT);
@@ -1101,10 +1102,18 @@
     alert("部分图片未能上传到云端，已压缩保存到当前浏览器。\n\n要让图片跨设备同步可见：\n① 配置 Cloudflare R2；或\n② 把图片放到仓库 assets/images/，再在「管图」中添加静态路径。\n\n本地图片不会写入 D1，避免撑爆数据库。");
   }
 
+  function notifyImageDeploying() {
+    const now = Date.now();
+    if (now - state.cloud.imageNoticeAt < 12000) return;
+    state.cloud.imageNoticeAt = now;
+    alert("图片已上传到 GitHub，Cloudflare 正在自动部署。\n\n通常几十秒后即可跨设备显示；如果当前卡片暂时空白，请稍后刷新页面。");
+  }
+
   async function uploadImagesToCloud(slot, dataUrls) {
     if (!state.cloud.enabled || !state.ownerUnlocked) return { images: dataUrls.slice(), failed: 0 };
     const images = [];
     let failed = 0;
+    let pending = 0;
     for (const dataUrl of dataUrls) {
       try {
         const response = await fetch("/api/upload", {
@@ -1122,6 +1131,7 @@
         const result = await response.json();
         if (result.ok && result.url) {
           images.push(result.url);
+          if (result.pendingDeployment) pending += 1;
         } else {
           throw new Error(result.error || "Upload failed");
         }
@@ -1131,7 +1141,7 @@
         console.warn("R2 upload failed, keeping image as local-only.", error);
       }
     }
-    return { images, failed };
+    return { images, failed, pending };
   }
 
   function wireLabUploads() {
