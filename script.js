@@ -1,8 +1,6 @@
 (function () {
   const data = window.HBEU_SITE_DATA;
   const CONTENT_VERSION = "editable-v3";
-  const ownerPasscodeKey = "hbeu-owner-passcode-v1";
-  const ownerSessionKey = "hbeu-owner-unlocked";
   const MAX_IMAGES_PER_SLOT = 6;
   const IMAGE_MAX_SIDE = 1080;
   const IMAGE_QUALITY = 0.72;
@@ -23,11 +21,13 @@
     cloud: {
       enabled: false,
       imageStacks: {},
+      adminToken: "",
       saveTimer: null,
-      lastErrorAt: 0
+      lastErrorAt: 0,
+      imageNoticeAt: 0
     },
     activeImageIndex: {},
-    ownerUnlocked: localStorage.getItem(ownerSessionKey) === "true"
+    ownerUnlocked: false
   };
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -252,11 +252,12 @@
   }
 
   function getOwnerToken() {
-    try {
-      return localStorage.getItem(ownerPasscodeKey) || "";
-    } catch (error) {
-      return "";
-    }
+    return state.cloud.adminToken || "";
+  }
+
+  function isCloudSafeImageSrc(src) {
+    const value = String(src || "").trim();
+    return Boolean(value) && !/^data:/i.test(value) && !/^blob:/i.test(value);
   }
 
   function cloudStatePayload() {
@@ -266,13 +267,18 @@
       var pins = getPins(section.id);
       if (pins && pins.length) { allPins[section.id] = pins; }
     });
+    const cloudImageStacks = {};
+    Object.entries(state.cloud.imageStacks || {}).forEach(([slot, images]) => {
+      const safeImages = Array.isArray(images) ? images.filter(isCloudSafeImageSrc) : [];
+      if (safeImages.length) cloudImageStacks[slot] = safeImages;
+    });
     return {
       content: {
         version: CONTENT_VERSION,
         sections: state.content.sections,
         qas: state.content.qas || []
       },
-      imageStacks: state.cloud.imageStacks || {},
+      imageStacks: cloudImageStacks,
       pins: allPins
     };
   }
@@ -349,8 +355,7 @@
 
   function setOwnerUnlocked(value) {
     state.ownerUnlocked = Boolean(value);
-    if (state.ownerUnlocked) localStorage.setItem(ownerSessionKey, "true");
-    else localStorage.removeItem(ownerSessionKey);
+    if (!state.ownerUnlocked) state.cloud.adminToken = "";
     refreshOwnerUi();
   }
 
@@ -371,35 +376,40 @@
     refreshIcons();
   }
 
-  var HARDCODED_PASSCODE = "wbh070907";
-
-  function unlockOwner() {
-    var saved = localStorage.getItem(ownerPasscodeKey) || "";
-    if (saved !== HARDCODED_PASSCODE) {
-      localStorage.setItem(ownerPasscodeKey, HARDCODED_PASSCODE);
-      saved = HARDCODED_PASSCODE;
-    }
-
-    var input = prompt("请输入开发者口令。", "");
+  async function unlockOwner() {
+    const input = prompt("请输入开发者口令。", "");
     if (input === null) return false;
-    if (input.trim() !== HARDCODED_PASSCODE) {
-      alert("口令不正确。页面保持访客浏览模式。");
+    const token = input.trim();
+    if (!token) {
+      alert("口令不能为空。页面保持访客浏览模式。");
       return false;
     }
-    setOwnerUnlocked(true);
-    state.cloud.enabled = true;
-    // 拉取云端数据并刷新页面，然后将本地点位推送到云端
-    loadCloudState().then(function (ok) {
-      rerenderEditableArea();
-      if (ok) {
-        // 本地有点位但云端没有 → 推送
-        scheduleCloudSave();
+
+    try {
+      const response = await fetch("/api/verify", {
+        method: "GET",
+        headers: { "x-admin-token": token, "accept": "application/json" }
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || (response.status === 401 ? "口令不正确。" : `验证失败（${response.status}）。`));
       }
-    });
-    return true;
+
+      state.cloud.adminToken = token;
+      state.cloud.enabled = true;
+      setOwnerUnlocked(true);
+      await loadCloudState();
+      rerenderEditableArea();
+      return true;
+    } catch (error) {
+      state.cloud.adminToken = "";
+      setOwnerUnlocked(false);
+      alert(`${error.message || "验证失败。"}\n\n页面保持访客浏览模式，请检查网络或 Cloudflare 的 ADMIN_TOKEN 配置。`);
+      return false;
+    }
   }
 
-  function toggleOwnerMode() {
+  async function toggleOwnerMode() {
     if (state.ownerUnlocked) {
       setOwnerUnlocked(false);
       closeCardEditor();
@@ -408,7 +418,7 @@
       alert("已退出开发者权限。现在是访客浏览模式。");
       return;
     }
-    unlockOwner();
+    await unlockOwner();
   }
 
   function requireOwner(actionName = "这个操作") {
@@ -436,15 +446,21 @@
   }
 
   function getImages(slot, configured) {
-    if (state.cloud.enabled && state.cloud.imageStacks && Array.isArray(state.cloud.imageStacks[slot])) {
-      return state.cloud.imageStacks[slot].filter(Boolean);
-    }
+    const cloudImages = state.cloud.enabled && state.cloud.imageStacks && Array.isArray(state.cloud.imageStacks[slot])
+      ? state.cloud.imageStacks[slot].filter(Boolean)
+      : null;
+    let localImages = [];
     try {
       const saved = JSON.parse(localStorage.getItem(imageListStorageKey(slot)) || "null");
-      if (Array.isArray(saved)) return saved.filter(Boolean);
+      if (Array.isArray(saved)) localImages = saved.filter(Boolean);
     } catch (error) {
       console.warn("Image stack storage could not be read.", error);
     }
+    if (cloudImages) {
+      const localOnlyImages = localImages.filter((src) => !isCloudSafeImageSrc(src));
+      return cloudImages.concat(localOnlyImages.filter((src) => !cloudImages.includes(src))).slice(-MAX_IMAGES_PER_SLOT);
+    }
+    if (localImages.length) return localImages;
     const legacy = localStorage.getItem(storageKey(slot));
     return legacy ? [legacy] : normalizeConfiguredImages(configured);
   }
@@ -1060,24 +1076,21 @@
       incoming = await Promise.all(imageFiles.map(readFileAsDataUrl));
     }
     if (state.cloud.enabled) {
-      const uploaded = await uploadImagesToCloud(slot, incoming);
-      if (uploaded.length) {
-        incoming = uploaded;
-      } else {
-        notifyImageFallback();
-      }
+      const result = await uploadImagesToCloud(slot, incoming);
+      incoming = result.images;
+      if (result.failed > 0) notifyImageFallback();
     }
     const combined = existing.concat(incoming);
     const nextImages = combined.slice(-MAX_IMAGES_PER_SLOT);
     const trimmed = combined.length - nextImages.length;
     if (!saveImages(slot, nextImages)) {
-      const fallback = (cloudUrls.length ? cloudUrls : incoming).slice(-2);
+      const fallback = incoming.slice(-2);
       if (!saveImages(slot, fallback)) return;
     }
     if (trimmed > 0) {
       alert(`已自动移除最早的 ${trimmed} 张（槽位上限 ${MAX_IMAGES_PER_SLOT} 张）。`);
     }
-    state.activeImageIndex[slot] = Math.max(0, nextImages.length - (cloudUrls.length || incoming.length));
+    state.activeImageIndex[slot] = Math.max(0, nextImages.length - incoming.length);
     rerenderEditableArea();
   }
 
@@ -1085,19 +1098,20 @@
     const now = Date.now();
     if (now - state.cloud.imageNoticeAt < 12000) return;
     state.cloud.imageNoticeAt = now;
-    alert(“图片已压缩保存到当前浏览器。\n\n要让图片跨设备同步可见：\n① 把图片放到仓库 assets/images/ 里，然后在「管图」里对每个卡片点「添加静态路径」\n② 如果只需要在当前电脑看，本机 localStorage 已保存，不影响浏览\n\n提示：项目目录的 list-images.txt 列出了所有可用图片路径。”);
+    alert("部分图片未能上传到云端，已压缩保存到当前浏览器。\n\n要让图片跨设备同步可见：\n① 配置 Cloudflare R2；或\n② 把图片放到仓库 assets/images/，再在「管图」中添加静态路径。\n\n本地图片不会写入 D1，避免撑爆数据库。");
   }
 
   async function uploadImagesToCloud(slot, dataUrls) {
-    if (!state.cloud.enabled || !state.ownerUnlocked) return [];
-    const uploaded = [];
+    if (!state.cloud.enabled || !state.ownerUnlocked) return { images: dataUrls.slice(), failed: 0 };
+    const images = [];
+    let failed = 0;
     for (const dataUrl of dataUrls) {
       try {
-        const response = await fetch(“/api/upload”, {
-          method: “POST”,
+        const response = await fetch("/api/upload", {
+          method: "POST",
           headers: {
-            “content-type”: “application/json”,
-            “x-admin-token”: getOwnerToken()
+            "content-type": "application/json",
+            "x-admin-token": getOwnerToken()
           },
           body: JSON.stringify({ slot, dataUrl })
         });
@@ -1107,15 +1121,17 @@
         }
         const result = await response.json();
         if (result.ok && result.url) {
-          uploaded.push(result.url);
+          images.push(result.url);
         } else {
-          throw new Error(result.error || “Upload failed”);
+          throw new Error(result.error || "Upload failed");
         }
       } catch (error) {
-        console.warn(“R2 upload failed, keeping image as local-only.”, error);
+        failed += 1;
+        images.push(dataUrl);
+        console.warn("R2 upload failed, keeping image as local-only.", error);
       }
     }
-    return uploaded;
+    return { images, failed };
   }
 
   function wireLabUploads() {
