@@ -180,6 +180,7 @@
   .detail-button,.upload-mini,.filter-chip,.image-nav,.pin-choice{min-height:44px!important}
   .module-panel{scroll-margin-top:72px!important;padding:24px 0 12px!important}
   .module-top{gap:20px!important}
+  .qa-section{min-height:calc(100svh - var(--j-bottom-nav-h) - 24px);padding-bottom:calc(var(--j-bottom-nav-h) + var(--j-safe-bottom) + 24px)!important}
 
   @media (prefers-reduced-motion:reduce){
     .j-cta,.j-q,.j-nav-ask,.j-nav-item,.j-mini{transition:none}
