@@ -95,33 +95,35 @@
 
   /* ----- 攻略区 ----- */
   .j-guide{padding:22px}
-  .j-guide-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .j-guide-head h2{margin:0;font-size:18px;font-weight:750;color:var(--j-ink)}
+  .j-guide-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .j-guide-head>div>span{display:block;margin-bottom:3px;font-size:12px;font-weight:700;color:var(--j-green)}
+  .j-guide-head h2{margin:0;font-size:20px;font-weight:800;color:var(--j-ink)}
   .j-guide-head button{min-height:38px;padding:0 14px;border:1px solid var(--j-line);border-radius:12px;background:var(--j-surface);color:var(--j-primary);font-size:14px;font-weight:650;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-  .j-route{display:grid;gap:10px}
-  .j-stop{border:1px solid var(--j-line);border-radius:14px;background:var(--j-surface);overflow:hidden;box-shadow:0 2px 0 var(--j-shadow)}
-  .j-stop-main{display:grid;grid-template-columns:120px 1fr;gap:12px;align-items:stretch;min-height:100px}
-  .j-stop-main img{width:120px;height:100%;object-fit:cover}
-  .j-stop-text{padding:14px 14px 14px 0}
-  .j-stop-text .j-tag{display:inline-block;padding:3px 8px;border-radius:6px;background:var(--j-q2);font-size:12px;font-weight:700;color:var(--j-green);margin-bottom:8px}
-  .j-stop-text h3{margin:0;font-size:16px;font-weight:700;color:var(--j-ink)}
-  .j-stop-text p{margin:6px 0 0;font-size:13px;color:var(--j-muted);line-height:1.5}
-  .j-mini-stops{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--j-line)}
-  .j-mini{padding:16px 14px;background:var(--j-surface);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
-  .j-mini strong{display:block;font-size:15px;font-weight:700;color:var(--j-ink)}
-  .j-mini small{display:block;margin-top:4px;font-size:13px;color:var(--j-muted)}
+  .j-week-card{padding:18px;border:1px solid var(--j-line);border-radius:14px;background:var(--j-surface);box-shadow:0 2px 0 var(--j-shadow)}
+  .j-week-intro .j-tag{display:inline-block;padding:4px 9px;border-radius:7px;background:var(--j-q2);font-size:12px;font-weight:750;color:var(--j-green)}
+  .j-week-intro h3{margin:10px 0 0;font-size:18px;line-height:1.4;font-weight:800;color:var(--j-ink)}
+  .j-week-intro p{margin:6px 0 0;font-size:14px;line-height:1.55;color:var(--j-muted)}
+  .j-week-steps{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:16px 0 0;padding:0;list-style:none}
+  .j-week-steps li{display:flex;align-items:center;gap:9px;min-height:54px;padding:9px 10px;border-radius:10px;background:var(--j-soft)}
+  .j-week-steps span{display:grid;width:30px;height:30px;flex:0 0 auto;place-items:center;border-radius:50%;background:var(--j-surface);color:var(--j-primary);font-size:11px;font-weight:850}
+  .j-week-steps strong{font-size:13px;line-height:1.4;font-weight:700;color:var(--j-ink)}
+  .j-week-actions{display:flex;gap:9px;margin-top:14px}
+  .j-week-actions button{flex:1;min-height:44px;padding:0 10px;border:1px solid var(--j-line);border-radius:11px;background:var(--j-surface);color:var(--j-ink);font-size:14px;font-weight:700;cursor:pointer;touch-action:manipulation}
+  .j-week-actions button:first-child{border-color:transparent;background:var(--j-primary);color:#fff}
 
-  /* ===== P0-3: 手账真实地图 180px 高 ===== */
+  /* ===== 手绘校园地图；板块高德地图样式保持独立 ===== */
   .j-map-section{padding:0 22px 22px}
   .j-map-shell{border:1px solid var(--j-line);border-radius:14px;background:var(--j-surface);box-shadow:0 2px 0 var(--j-shadow);overflow:hidden}
-  .j-map-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px}
-  .j-map-head h2{margin:0;font-size:17px;font-weight:750;color:var(--j-ink)}
-  .j-map-head span{font-size:12px;color:var(--j-muted);padding:4px 8px;border-radius:8px;background:var(--j-soft)}
-  .j-map-real{height:180px;position:relative;background:#e8e5df}
-  .j-map-tip-bar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:5;padding:4px 12px;border-radius:8px;background:rgba(255,255,255,.88);color:var(--j-muted);font-size:11px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+  .j-map-head{display:flex;align-items:flex-end;justify-content:space-between;padding:14px 16px 10px}
+  .j-map-head span{display:block;margin-bottom:2px;font-size:11px;font-weight:700;color:var(--j-green)}
+  .j-map-head h2{margin:0;font-size:18px;font-weight:800;color:var(--j-ink)}
+  .j-map-head small{padding:4px 8px;border-radius:8px;background:var(--j-soft);font-size:12px;color:var(--j-muted)}
+  .j-map-poster{position:relative;display:block;aspect-ratio:1230/864;overflow:hidden;background:var(--j-soft);touch-action:manipulation}
+  .j-map-poster img{display:block;width:100%;height:100%;object-fit:cover}
+  .j-map-poster span{position:absolute;right:10px;bottom:10px;padding:7px 11px;border-radius:9px;background:rgba(255,255,255,.92);color:var(--j-ink);font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 
   /* ===== P0-4: 模块地图 touch-action 单指纵向滚动 ===== */
-  .satellite-map,.j-map-real{touch-action:pan-y pinch-zoom}
+  .satellite-map{touch-action:pan-y pinch-zoom}
   .satellite-map::after{content:"双指缩放地图 · 单指滚动页面";position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:5;padding:6px 14px;border-radius:10px;background:rgba(255,255,255,.88);color:var(--j-muted);font-size:12px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.06);backdrop-filter:blur(8px)}
 
   /* ----- 底部导航 ----- */
@@ -137,17 +139,21 @@
   /* ----- P1: 微信弹层（昵称/微信号正确标注） ----- */
   .journal-wechat-modal{position:fixed;inset:0;z-index:130;align-items:center;justify-content:center;padding:22px;background:rgba(12,14,15,.72);backdrop-filter:blur(12px);opacity:0;pointer-events:none;transition:opacity .28s ease}
   .journal-wechat-modal.is-open{opacity:1;pointer-events:auto;display:flex}
-  .j-wechat-panel{width:min(340px,100%);padding:28px 22px 22px;border-radius:18px;background:var(--j-surface);box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center}
+  .j-wechat-panel{position:relative;width:min(340px,100%);max-height:calc(100svh - 32px);padding:24px 22px 22px;border-radius:18px;background:var(--j-surface);box-shadow:0 20px 60px rgba(0,0,0,.25);overflow-y:auto;overscroll-behavior:contain;text-align:center;touch-action:pan-y}
   .j-wechat-panel .j-wechat-avatar{width:64px;height:64px;border-radius:16px;margin:0 auto 12px;background:var(--j-primary);color:var(--j-primary-ink);display:grid;place-items:center;font-size:28px;font-weight:800}
   .j-wechat-panel h3{margin:0;font-size:18px;font-weight:750;color:var(--j-ink)}
   .j-wechat-panel .j-wechat-sub{margin:4px 0 16px;font-size:13px;color:var(--j-muted)}
-  .j-wechat-id-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px}
+  .j-wechat-id-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:12px 0}
   .j-wechat-id-row code{padding:8px 12px;border-radius:10px;background:var(--j-soft);font-family:"Cascadia Mono",Consolas,monospace;font-size:16px;color:var(--j-ink);user-select:all}
-  .j-wechat-id-row button{min-height:40px;padding:0 14px;border:1px solid var(--j-line);border-radius:10px;background:var(--j-surface);color:var(--j-primary);font-size:13px;font-weight:650;cursor:pointer}
+  .j-wechat-id-row button{min-height:44px;padding:0 14px;border:1px solid var(--j-line);border-radius:10px;background:var(--j-surface);color:var(--j-primary);font-size:13px;font-weight:650;cursor:pointer;touch-action:manipulation}
   .j-wechat-id-row button.copied{background:var(--j-green);color:#fff;border-color:var(--j-green)}
-  .j-wechat-qr{width:150px;height:150px;margin:0 auto 14px;border:1px solid var(--j-line);border-radius:12px;background:var(--j-soft) center/contain no-repeat}
+  .j-wechat-qr-link{display:block;width:164px;height:164px;margin:14px auto 0;border:1px solid var(--j-line);border-radius:12px;background:var(--j-soft);overflow:hidden}
+  .j-wechat-qr{display:block;width:100%;height:100%;object-fit:contain;-webkit-touch-callout:default;user-select:auto}
+  .j-wechat-save-tip{margin:7px 0 0;font-size:12px;color:var(--j-muted)}
+  .j-wechat-open{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:11px;background:var(--j-primary);color:#fff;font-size:14px;font-weight:750;text-decoration:none;touch-action:manipulation}
   .j-wechat-hint{margin:0;font-size:13px;color:var(--j-muted);line-height:1.6}
-  .j-wechat-close{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:44px;margin-top:18px;border:none;border-radius:50%;background:var(--j-soft);color:var(--j-muted);cursor:pointer}
+  .j-wechat-hint{margin-top:12px}
+  .j-wechat-close{position:absolute;top:10px;right:10px;z-index:2;display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;padding:0 0 3px;border:none;border-radius:50%;background:var(--j-soft);color:var(--j-ink);font:400 32px/1 system-ui,sans-serif;cursor:pointer;touch-action:manipulation}
 
   /* ----- 快速问答 ----- */
   .journal-quick-modal{position:fixed;inset:0;z-index:125;align-items:flex-end;justify-content:center;background:rgba(12,14,15,.45);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .24s ease}
