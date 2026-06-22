@@ -1180,8 +1180,6 @@ body:not(.owner-unlocked) .pin-list {
   background: var(--ink);
   color: var(--paper);
 }
-
-
 /* 双保险隐藏规则：防止 .place-card { display:flex; } 覆盖浏览器默认 hidden 样式 */
 [hidden],
 .place-card[hidden],
@@ -1985,6 +1983,11 @@ body.owner-unlocked .place-card.is-hidden-card::before {
 
   .brand small {
     display: none;
+  }
+
+  /* 底部导航占位：back-top 按钮上移避开手账导航 */
+  .back-top {
+    bottom: calc(24px + var(--j-bottom-nav-h, 64px) + env(safe-area-inset-bottom, 0px));
   }
 
   .hero {

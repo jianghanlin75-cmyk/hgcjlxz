@@ -2449,6 +2449,8 @@
     applyFilters();
     updateActiveNav();
     refreshIcons();
+
+    if (typeof window.renderMobileJournal === "function") window.renderMobileJournal();
   }
 
   function initCanvas() {
@@ -2555,8 +2557,14 @@
     applyFilters();
     updateActiveNav();
     refreshIcons();
+    if (typeof window.renderMobileJournal === "function") window.renderMobileJournal();
     initCanvas();
   }
 
   window.addEventListener("DOMContentLoaded", init);
+
+  /* Expose dynamic content snapshot for mobile journal */
+  window.__journalGetSections = function() { return state.content.sections; };
+  window.__journalGetQas = function() { return state.content.qas || []; };
+  window.__journalGetRoutes = function() { return (window.HBEU_SITE_DATA && window.HBEU_SITE_DATA.routes) || []; };
 })();
