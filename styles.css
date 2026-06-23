@@ -2293,6 +2293,9 @@ body.owner-unlocked .place-card.is-hidden-card::before {
 }
 
 
+/* 路线已整合进新生第一周卡片，隐藏旧路线区（桌面+手机全域） */
+.route-strip { display: none !important; }
+
 /* 板块描述编辑器 */
 .tone-editor { margin-top: 10px; }
 .tone-editor textarea {
@@ -2533,8 +2536,6 @@ body::after {
 @media (min-width: 861px) {
   /* 隐藏旧桌面 Hero，用手账版替代 */
   .hero { display: none !important; }
-  /* 路线已整合进新生第一周卡片，隐藏旧路线区 */
-  .route-strip { display: none !important; }
   /* 顶栏导航 + 问学长融为一体 */
   .topnav { gap: 2px; }
   .topnav .desktop-ask-btn { margin-left: 4px; }
