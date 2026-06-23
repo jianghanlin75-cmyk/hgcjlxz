@@ -3081,14 +3081,13 @@ body::after {
   .j-wechat-qr { object-fit:contain; }
 
   .j-quick-panel {
-    position:relative;width:min(480px,calc(100% - 28px));max-height:78vh;
-    padding:34px 26px 24px;border-radius:22px;background:#fff;
+    position:relative;width:min(500px,calc(100% - 28px));max-height:78vh;
+    padding:40px 32px 28px;border-radius:24px;background:#fff;
     box-shadow:0 14px 42px rgba(0,0,0,.12);overflow-y:auto;transform:none !important;
   }
-  .j-quick-panel h3 { margin:0 0 12px;padding-right:60px;font-size:18px;font-weight:750;line-height:1.4; }
-  .j-quick-answer { font-size:14.5px;line-height:1.85;color:#4a5552; }
+  .j-quick-panel h3 { margin:0 0 16px;padding-right:60px;font-size:18px;font-weight:750;line-height:1.4; }
+  .j-quick-answer { margin:0 0 28px;font-size:15px;line-height:1.9;color:#4a5552; }
   .j-quick-answer strong { color:var(--j-ink,#20302b); }
-  /* Quick 关闭按钮 → 胶囊形 */
   .j-quick-close {
     top:14px;right:14px;width:auto;height:32px;padding:0 14px;
     border:1px solid rgba(32,48,43,.08);border-radius:16px;
@@ -3097,6 +3096,22 @@ body::after {
   }
   .j-quick-close:hover { background:rgba(32,48,43,.10);color:var(--j-ink,#20302b); }
   .j-quick-close svg { display:none; }
-  /* Quick 按钮 */
-  .j-btn-primary { border:none;background:var(--j-primary,#eb6b43);color:#fff;border-radius:21px; }
-  .j-btn-ghost { border:1px solid rgba(32,48,43,.12);border-radius:21px; }
+  /* Footer: link left, close right */
+  .j-quick-actions { display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:20px;border-top:1px solid rgba(32,48,43,.06); }
+  .j-btn-primary {
+    display:inline-flex;align-items:center;gap:6px;
+    border:none;background:transparent;color:var(--j-primary,#eb6b43);
+    font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+    padding:0;min-height:auto;text-decoration:none;
+    transition:gap .2s;
+  }
+  .j-btn-primary:hover { gap:10px; }
+  .j-btn-primary::after { content:' →';font-size:15px; }
+  .j-btn-ghost {
+    height:38px;padding:0 22px;
+    border:1px solid rgba(32,48,43,.10);border-radius:19px;
+    background:#fff;color:var(--j-muted,#66746e);
+    font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;
+    transition:all .18s ease;
+  }
+  .j-btn-ghost:hover { border-color:rgba(32,48,43,.22);color:var(--j-ink,#20302b);background:#fafaf7; }
