@@ -2515,7 +2515,7 @@ body::after {
   /* 隐藏旧桌面 Hero，用手账版替代 */
   .hero { display: none !important; }
   /* 桌面端隐藏旧路线区，由 desktop-essentials 取代 */
-  .route-strip { display: none !important; }
+  /* 桌面端路线区保留 */
 
   /* 顶栏「问学长」按钮 */
   .desktop-ask-btn {
@@ -3069,30 +3069,43 @@ body::after {
 
   .j-wechat-panel {
     position: relative;
-    width: min(400px, calc(100% - 44px));
-    max-height: calc(100svh - 64px);
-    padding: 28px 24px 24px;
-    border-radius: 18px;
+    width: min(380px, calc(100% - 32px));
+    max-height: 85vh;
+    padding: 32px 24px 22px;
+    border-radius: 20px;
     background: var(--j-surface, #fff);
-    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    box-shadow: 0 20px 60px rgba(0,0,0,.18);
     overflow-y: auto;
     overscroll-behavior: contain;
     text-align: center;
   }
+  /* Shrink QR codes on desktop */
+  .j-wechat-qr-link {
+    width: 110px !important;
+    height: 110px !important;
+  }
+  .journal-wechat-modal {
+    background: rgba(12,14,15,.55) !important;
+    backdrop-filter: blur(12px) !important;
+  }
 
   .j-quick-panel {
     position: relative;
-    width: min(520px, calc(100% - 44px));
-    max-height: 70vh;
-    padding: 28px 24px calc(24px + env(safe-area-inset-bottom, 0px));
-    border-radius: 18px;
+    width: min(500px, calc(100% - 32px));
+    max-height: 76vh;
+    padding: 36px 28px 26px;
+    border-radius: 20px;
     background: var(--j-surface, #fff);
-    box-shadow: 0 -10px 40px rgba(0,0,0,.15);
+    box-shadow: 0 16px 48px rgba(0,0,0,.14);
     overflow-y: auto;
     transform: none !important;
   }
+  .j-quick-panel h3 { font-size: 19px; line-height: 1.4; }
+  .j-quick-answer { font-size: 15px; line-height: 1.8; color: #4a5552; }
 
   .j-quick-modal {
     align-items: center !important;
+    background: rgba(12,14,15,.35) !important;
+    backdrop-filter: blur(6px) !important;
   }
 }
