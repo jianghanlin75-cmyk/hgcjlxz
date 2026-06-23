@@ -3065,8 +3065,9 @@ body::after {
     padding:30px 22px 20px;border-radius:20px;background:#fff;
     box-shadow:0 18px 50px rgba(0,0,0,.15);overflow-y:auto;text-align:center;
   }
-  /* QR 85px */
-  .j-wechat-qr-link { width:85px !important;height:85px !important; }
+  /* QR 缩小 */
+  .j-wechat-panel .j-wechat-qr-link,
+  .journal-wechat-modal .j-wechat-qr-link { width:80px !important;height:80px !important;margin:6px auto 0 !important; }
   /* 关闭按钮 → 胶囊形 */
   .j-wechat-close {
     top:12px;right:12px;width:auto;height:34px;padding:0 14px;
@@ -3115,3 +3116,8 @@ body::after {
     transition:all .18s ease;
   }
   .j-btn-ghost:hover { border-color:rgba(32,48,43,.22);color:var(--j-ink,#20302b);background:#fafaf7; }
+}
+
+/* 兜底覆盖 journal.css 二维码尺寸 */
+@media (min-width: 861px) {
+  .journal-wechat-modal .j-wechat-qr-link { width: 80px !important; height: 80px !important; margin: 6px auto 0 !important; }
