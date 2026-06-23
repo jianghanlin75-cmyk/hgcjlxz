@@ -12,6 +12,29 @@
     <script src="./site-data.js" defer></script>
     <script src="./script.js" defer></script>
     <script src="./journal.js" defer></script>
+    <style>
+      /* 桌面端弹窗关键样式 — 最后加载，确保覆盖 journal.css */
+      @media(min-width:861px){
+        .j-wechat-qr-link{width:80px!important;height:80px!important;margin:6px auto 0!important}
+        .j-wechat-panel{width:min(370px,calc(100% - 28px))!important;max-height:88vh!important;padding:30px 22px 20px!important;border-radius:20px!important;box-shadow:0 18px 50px rgba(0,0,0,.15)!important}
+        .j-wechat-close{top:12px!important;right:12px!important;width:auto!important;height:34px!important;padding:0 14px!important;border:1px solid rgba(32,48,43,.08)!important;border-radius:17px!important;background:rgba(32,48,43,.04)!important;font-size:13px!important;font-weight:600!important;font-family:inherit!important}
+        .j-wechat-close:hover{background:rgba(32,48,43,.10)!important;color:var(--j-ink,#20302b)!important}
+        .j-wechat-save-tip{font-size:10px!important}
+        .j-quick-panel{width:min(500px,calc(100% - 28px))!important;padding:40px 32px 28px!important;border-radius:24px!important;box-shadow:0 14px 42px rgba(0,0,0,.12)!important}
+        .j-quick-panel h3{margin:0 0 16px!important;padding-right:60px!important;font-size:18px!important}
+        .j-quick-answer{margin:0 0 28px!important;font-size:15px!important;line-height:1.9!important;color:#4a5552!important}
+        .j-quick-close{top:14px!important;right:14px!important;width:auto!important;height:32px!important;padding:0 14px!important;border:1px solid rgba(32,48,43,.08)!important;border-radius:16px!important;background:rgba(32,48,43,.04)!important;font-size:12px!important;font-weight:600!important;font-family:inherit!important}
+        .j-quick-close svg{display:none!important}
+        .j-quick-actions{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:16px!important;padding-top:20px!important;border-top:1px solid rgba(32,48,43,.06)!important}
+        .j-btn-primary{border:none!important;background:0 0!important;color:var(--j-primary,#eb6b43)!important;font-size:14px!important;font-weight:600!important;padding:0!important;min-height:auto!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;gap:6px!important}
+        .j-btn-primary:hover{gap:10px!important}
+        .j-btn-primary::after{content:' →'!important;font-size:15px!important}
+        .j-btn-ghost{height:38px!important;padding:0 22px!important;border:1px solid rgba(32,48,43,.10)!important;border-radius:19px!important;background:#fff!important;color:var(--j-muted,#66746e)!important;font-size:13px!important;font-weight:600!important}
+        .j-btn-ghost:hover{border-color:rgba(32,48,43,.22)!important;color:var(--j-ink,#20302b)!important;background:#fafaf7!important}
+        .journal-wechat-modal{background:rgba(12,14,15,.48)!important;backdrop-filter:blur(12px)!important}
+        .journal-quick-modal{background:rgba(12,14,15,.30)!important;backdrop-filter:blur(6px)!important;align-items:center!important}
+      }
+    </style>
   </head>
   <body>
     <canvas id="campusCanvas" aria-hidden="true"></canvas>
