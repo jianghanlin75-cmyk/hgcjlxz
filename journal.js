@@ -98,13 +98,30 @@ function buildDesktopQGrid(){
 
 function buildDesktopSteps(){
 	var list=$('#desktopSteps');if(!list||list._djBuilt)return;list._djBuilt=true;
-	var routes=getRoutes(),first=routes[0]||{},steps=Array.isArray(first.steps)&&first.steps.length?first.steps.slice(0,4):['从校门进入校园','到专业报到处登记','前往寝室完成入住','熟悉快递与生活区'];
-	list.innerHTML='';
-	steps.forEach(function(step,index){
-		var li=document.createElement('li');
-		li.innerHTML='<span>'+String(index+1).padStart(2,'0')+'</span><strong>'+esc(step)+'</strong>';
-		list.appendChild(li);
-	});
+	var routes=getRoutes();
+	// Build route tabs
+	var tabsRow=$('#desktopRtabs'), rname=$('#desktopRname');
+	if(tabsRow&&!tabsRow._djBuilt){tabsRow._djBuilt=true;
+		routes.forEach(function(r){
+			var tab=document.createElement('button');tab.className='desktop-rtab';
+			tab.setAttribute('data-droute',r.id);tab.textContent=r.label;
+			tab.addEventListener('click',function(){showDesktopRoute(r)});
+			tabsRow.appendChild(tab);
+		});
+	}
+	// Show first route
+	if(routes.length){showDesktopRoute(routes[0]);}
+	function showDesktopRoute(r){
+		$$('.desktop-rtab').forEach(function(t){t.classList.toggle('on',t.dataset.droute===r.id)});
+		if(rname)rname.textContent=r.title;
+		var steps=Array.isArray(r.steps)?r.steps:[];
+		list.innerHTML='';
+		steps.forEach(function(step,index){
+			var li=document.createElement('li');
+			li.innerHTML='<span>'+String(index+1).padStart(2,'0')+'</span><strong>'+esc(step)+'</strong>';
+			list.appendChild(li);
+		});
+	}
 }
 
 function wireDesktopEvents(){

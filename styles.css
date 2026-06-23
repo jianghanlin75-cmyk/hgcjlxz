@@ -2514,8 +2514,11 @@ body::after {
 @media (min-width: 861px) {
   /* 隐藏旧桌面 Hero，用手账版替代 */
   .hero { display: none !important; }
-  /* 桌面端隐藏旧路线区，由 desktop-essentials 取代 */
-  /* 桌面端路线区保留（完整路线切换） */
+  /* 路线已整合进新生第一周卡片，隐藏旧路线区 */
+  .route-strip { display: none !important; }
+  /* 顶栏导航 + 问学长融为一体 */
+  .topnav { gap: 2px; }
+  .topnav .desktop-ask-btn { margin-left: 4px; }
 
   /* 顶栏「问学长」按钮 */
   .desktop-ask-btn {
@@ -2905,6 +2908,12 @@ body::after {
     color: #20302b;
     font-weight: 700;
   }
+  /* 路线标签（整合在新生第一周卡片内） */
+  .desktop-rtabs { display: flex; gap: 8px; margin: 16px 0 0; flex-wrap: wrap; }
+  .desktop-rtab { min-height: 38px; padding: 0 14px; border: 1px solid rgba(32,48,43,.13); border-radius: 20px; background: #f9f8f5; font-size: 13px; font-weight: 650; color: var(--muted); cursor: pointer; font-family: inherit; transition: all .2s ease; }
+  .desktop-rtab:hover { border-color: rgba(32,48,43,.28); color: var(--ink); }
+  .desktop-rtab.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .desktop-rname { margin: 14px 0 0; font-size: 17px; font-weight: 750; color: var(--ink); }
   .desktop-week-btns {
     display: flex;
     gap: 10px;
