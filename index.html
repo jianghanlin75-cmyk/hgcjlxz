@@ -18,18 +18,23 @@
 
     <header class="topbar" data-elevated="false">
       <a class="brand" href="#home" aria-label="回到首页">
-        <span class="brand-mark">湖</span>
+        <span class="brand-mark">鹿</span>
         <span>
-          <strong>湖北工程学院</strong>
-          <small>Freshman Atlas</small>
+          <strong>长颈鹿学长</strong>
+          <small>湖北工程学院</small>
         </span>
       </a>
       <nav class="topnav" aria-label="主导航">
-        <a href="#modules">板块</a>
-        <a href="#modules">点位</a>
-        <a href="#qa">Q&A</a>
+        <a href="#desktop-hero">首页</a>
+        <a href="#desktop-essentials">攻略</a>
+        <a href="#desktop-map">校园地图</a>
+        <a href="#qa">新生问答</a>
         <a class="owner-only" href="#image-lab">图片通道</a>
       </nav>
+      <button class="desktop-ask-btn" type="button" id="desktopAskSenior" aria-label="问学长">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg>
+        <span>问学长</span>
+      </button>
       <div class="top-actions">
         <button class="owner-button" type="button" id="toggleOwner" aria-label="进入开发者权限" title="开发者权限">
           <i data-lucide="lock-keyhole"></i>
@@ -85,6 +90,76 @@
           <span></span>
         </div>
       </section>
+
+      <!-- ===== 桌面端手账 UI ===== -->
+      <section class="desktop-hero" id="desktop-hero">
+        <div class="desktop-hero-inner">
+          <div class="desktop-hero-copy">
+            <p class="desktop-hello">你好，新同学</p>
+            <h1><small>这份新生攻略，</small>是我希望自己大一时就能看到的。</h1>
+            <p class="desktop-hero-desc">宿舍、快递、校园网和校园路线，长颈鹿学长陪你慢慢熟悉。</p>
+            <div class="desktop-hero-actions">
+              <a class="desktop-primary-btn" href="#desktop-essentials">开始看攻略 <i data-lucide="arrow-down"></i></a>
+              <a class="desktop-secondary-btn" href="#desktop-map">先看校园地图</a>
+            </div>
+          </div>
+          <div class="desktop-hero-mascot">
+            <div class="desktop-hero-bg">
+              <div class="desktop-hero-sun"></div>
+              <div class="desktop-hero-orbit"></div>
+              <div class="desktop-hero-leaf l1"></div>
+              <div class="desktop-hero-leaf l2"></div>
+              <img class="desktop-giraffe" src="assets/images/giraffe-senior-pink-shirt.png" alt="长颈鹿学长" width="470" height="500">
+            </div>
+          </div>
+        </div>
+        <div class="desktop-hero-wave" aria-hidden="true"></div>
+      </section>
+
+      <section class="desktop-questions" aria-label="新生常见问题">
+        <div class="desktop-section-inner">
+          <div class="desktop-section-head">
+            <h2>你可能正在找</h2>
+            <span>点开先看简答</span>
+          </div>
+          <div class="desktop-q-grid" id="desktopQGrid"></div>
+        </div>
+      </section>
+
+      <section class="desktop-essentials" id="desktop-essentials">
+        <div class="desktop-section-inner">
+          <div class="desktop-essentials-grid">
+            <article class="desktop-week-card" id="desktopWeekCard">
+              <div class="desktop-week-card-inner">
+                <p class="desktop-eyebrow">到校不慌</p>
+                <h2>新生第一周</h2>
+                <div class="desktop-week-intro">
+                  <strong>先安顿，再慢慢熟悉校园</strong>
+                  <p>跟着四步走，把最重要的事情先办好。</p>
+                </div>
+                <ol class="desktop-steps" id="desktopSteps"></ol>
+                <div class="desktop-week-btns">
+                  <button class="desktop-week-primary" data-j-nav="routes">查看完整路线</button>
+                  <button class="desktop-week-ghost" data-j-nav="modules">浏览校园板块</button>
+                </div>
+              </div>
+            </article>
+            <article class="desktop-map-card" id="desktop-map">
+              <div class="desktop-map-head">
+                <div>
+                  <p class="desktop-eyebrow">一图认路</p>
+                  <h2>校园地图</h2>
+                </div>
+                <small>手绘版 · 点击看大图</small>
+              </div>
+              <a class="desktop-map-poster" href="assets/images/hbeu-illustrated-campus-map.jpg" target="_blank" rel="noopener">
+                <img src="assets/images/hbeu-illustrated-campus-map.jpg" alt="湖北工程学院手绘校园地图" loading="lazy">
+              </a>
+            </article>
+          </div>
+        </div>
+      </section>
+      <!-- ===== 桌面端手账 UI 结束 ===== -->
 
       <section class="route-strip" aria-labelledby="routeTitle">
         <div class="section-heading compact">

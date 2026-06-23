@@ -2505,3 +2505,594 @@ body::after {
   background-size: 380px 240px;
   opacity: .75;
 }
+
+/* ============================================================
+   桌面端手账 UI · Desktop Journal Styles
+   仅在 ≥861px 生效，手机端样式不受影响
+   ============================================================ */
+
+@media (min-width: 861px) {
+  /* 隐藏旧桌面 Hero，用手账版替代 */
+  .hero { display: none !important; }
+  /* 桌面端隐藏旧路线区，由 desktop-essentials 取代 */
+  .route-strip { display: none !important; }
+
+  /* 顶栏「问学长」按钮 */
+  .desktop-ask-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 12px;
+    background: #eb6b43;
+    color: #fff;
+    font-size: .94rem;
+    font-weight: 750;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #c4552f;
+    transition: transform .15s ease, box-shadow .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .desktop-ask-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #c4552f;
+    outline: none;
+  }
+  .desktop-ask-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #c4552f;
+  }
+  .desktop-ask-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ===== Desktop Hero ===== */
+  .desktop-hero {
+    position: relative;
+    min-height: 540px;
+    overflow: hidden;
+    background: url('assets/images/campus-hero-bg.png') center/cover no-repeat;
+    border-bottom: 1px solid rgba(32,48,43,.08);
+  }
+  .desktop-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+      linear-gradient(105deg, rgba(251,250,247,.88) 0%, rgba(251,250,247,.72) 32%, rgba(251,250,247,.38) 52%, rgba(251,250,247,.06) 66%, transparent 78%),
+      linear-gradient(180deg, transparent 0%, transparent 72%, rgba(251,250,247,.55) 92%, rgba(251,250,247,.85) 100%);
+    pointer-events: none;
+  }
+  .desktop-hero-inner {
+    width: min(1240px, calc(100% - 72px));
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.04fr .96fr;
+    min-height: 540px;
+    align-items: center;
+    gap: 36px;
+  }
+  .desktop-hero-copy {
+    padding: 72px 0 48px;
+    z-index: 2;
+  }
+  .desktop-hello {
+    display: inline-block;
+    margin: 0 0 12px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: rgba(79,139,102,.10);
+    color: #328459;
+    font-size: 14px;
+    font-weight: 750;
+    letter-spacing: .02em;
+  }
+  .desktop-hero h1 {
+    margin: 0;
+    max-width: 680px;
+    font-family: "Microsoft YaHei UI","Noto Sans SC","PingFang SC",system-ui,sans-serif;
+    font-size: 40px;
+    line-height: 1.18;
+    letter-spacing: -.02em;
+    color: #20302b;
+    white-space: nowrap;
+  }
+  .desktop-hero h1 small {
+    display: inline;
+    margin-bottom: 0;
+    font-size: 24px;
+    line-height: 1.4;
+    font-weight: 650;
+    letter-spacing: 0;
+    color: #4a5c56;
+  }
+  .desktop-hero-desc {
+    max-width: 520px;
+    margin: 22px 0 0;
+    font-size: 17px;
+    line-height: 1.82;
+    color: #66746e;
+  }
+  .desktop-hero-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+  }
+  .desktop-primary-btn,
+  .desktop-secondary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 48px;
+    padding: 0 22px;
+    border-radius: 12px;
+    font-weight: 750;
+    font-size: 15px;
+    text-decoration: none;
+    transition: transform .2s ease, box-shadow .2s ease;
+    cursor: pointer;
+  }
+  .desktop-primary-btn {
+    border: none;
+    background: #eb6b43;
+    color: #fff;
+    box-shadow: 0 4px 0 #c4552f;
+  }
+  .desktop-primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0 #c4552f;
+  }
+  .desktop-primary-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #c4552f;
+  }
+  .desktop-primary-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .desktop-secondary-btn {
+    border: 1px solid rgba(32,48,43,.16);
+    background: rgba(255,255,255,.72);
+    color: #20302b;
+    backdrop-filter: blur(8px);
+  }
+  .desktop-secondary-btn:hover {
+    background: #fff;
+    transform: translateY(-2px);
+    border-color: rgba(32,48,43,.28);
+  }
+
+  /* Desktop Hero 右侧吉祥物区域 */
+  .desktop-hero-mascot {
+    position: relative;
+    height: 100%;
+    display: grid;
+    place-items: end center;
+    z-index: 1;
+  }
+  .desktop-hero-bg {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 540px;
+    display: grid;
+    place-items: end center;
+    background: transparent;
+    overflow: hidden;
+  }
+  .desktop-hero-sun { display: none; }
+  .desktop-hero-orbit { display: none; }
+  .desktop-hero-leaf { display: none; }
+  .desktop-giraffe {
+    position: relative;
+    z-index: 2;
+    width: min(470px, 90%);
+    max-height: 500px;
+    object-fit: contain;
+    object-position: bottom center;
+    pointer-events: none;
+  }
+
+  /* Desktop Hero 底部波浪过渡 */
+  .desktop-hero-wave {
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 56px;
+    background: linear-gradient(180deg, transparent, var(--paper, #fbfaf7));
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ===== Desktop Questions ===== */
+  .desktop-questions {
+    background:
+      linear-gradient(90deg, rgba(32,48,43,.020) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(32,48,43,.016) 1px, transparent 1px),
+      var(--paper, #fbfaf7);
+    background-size: 44px 44px;
+    padding: 10px 0 44px;
+    border-bottom: 1px solid rgba(32,48,43,.08);
+  }
+  .desktop-section-inner {
+    width: min(1240px, calc(100% - 72px));
+    margin: 0 auto;
+  }
+  .desktop-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .desktop-section-head h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: #20302b;
+    font-family: "Microsoft YaHei UI","Noto Sans SC","PingFang SC",system-ui,sans-serif;
+  }
+  .desktop-section-head span {
+    font-size: 13px;
+    color: #66746e;
+    font-weight: 650;
+  }
+  .desktop-q-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+  }
+  .desktop-q-grid .j-q {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 68px;
+    padding: 12px 14px;
+    border: 1px solid rgba(32,48,43,.12);
+    border-radius: 13px;
+    background: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    color: #20302b;
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgba(36,53,44,.08);
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+    -webkit-tap-highlight-color: transparent;
+    text-align: left;
+    font-family: inherit;
+  }
+  .desktop-q-grid .j-q:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(36,53,44,.10);
+    border-color: rgba(32,48,43,.22);
+  }
+  .desktop-q-grid .j-q:active {
+    transform: scale(.985);
+  }
+  .desktop-q-grid .j-q .j-bubble {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 50%;
+  }
+  .desktop-q-grid .j-q:nth-child(1) .j-bubble { background: #ffe0d4; }
+  .desktop-q-grid .j-q:nth-child(2) .j-bubble { background: #d8efe0; }
+  .desktop-q-grid .j-q:nth-child(3) .j-bubble { background: #dcecf8; }
+  .desktop-q-grid .j-q:nth-child(4) .j-bubble { background: #eee2f4; }
+  .desktop-q-grid .j-q:nth-child(5) .j-bubble { background: #fbefbd; }
+  .desktop-q-grid .j-q .j-bubble svg {
+    width: 20px;
+    height: 20px;
+    stroke: #20302b;
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ===== Desktop Essentials (Week + Map) ===== */
+  .desktop-essentials {
+    padding: 8px 0 56px;
+    background:
+      linear-gradient(90deg, rgba(32,48,43,.020) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(32,48,43,.016) 1px, transparent 1px),
+      var(--paper, #fbfaf7);
+    background-size: 44px 44px;
+    border-bottom: 1px solid rgba(32,48,43,.08);
+  }
+  .desktop-essentials-grid {
+    display: grid;
+    grid-template-columns: .88fr 1.12fr;
+    gap: 22px;
+    align-items: stretch;
+  }
+
+  /* Week Card */
+  .desktop-week-card {
+    border: 1px solid rgba(32,48,43,.12);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 2px 0 rgba(36,53,44,.06);
+    overflow: hidden;
+  }
+  .desktop-week-card-inner {
+    padding: 26px;
+  }
+  .desktop-eyebrow {
+    display: inline-block;
+    margin: 0;
+    padding: 4px 10px;
+    border-radius: 7px;
+    background: rgba(79,139,102,.10);
+    color: #328459;
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: .02em;
+  }
+  .desktop-week-card h2 {
+    margin: 10px 0 0;
+    font-size: 26px;
+    font-weight: 800;
+    color: #20302b;
+    font-family: "Microsoft YaHei UI","Noto Sans SC","PingFang SC",system-ui,sans-serif;
+  }
+  .desktop-week-intro {
+    margin-top: 18px;
+  }
+  .desktop-week-intro strong {
+    display: block;
+    font-size: 18px;
+    font-weight: 750;
+    color: #20302b;
+  }
+  .desktop-week-intro p {
+    margin: 6px 0 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #66746e;
+  }
+  .desktop-steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 20px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .desktop-steps li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 62px;
+    padding: 11px 12px;
+    border-radius: 11px;
+    background: #f4f2ec;
+  }
+  .desktop-steps span {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    place-items: center;
+    border-radius: 50%;
+    background: #fff;
+    color: #eb6b43;
+    font-size: 12px;
+    font-weight: 900;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .desktop-steps strong {
+    font-size: 13px;
+    line-height: 1.45;
+    color: #20302b;
+    font-weight: 700;
+  }
+  .desktop-week-btns {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .desktop-week-btns button {
+    flex: 1;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 11px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .18s ease, box-shadow .18s ease;
+    font-family: inherit;
+  }
+  .desktop-week-primary {
+    border: none;
+    background: #eb6b43;
+    color: #fff;
+    box-shadow: 0 3px 0 #c4552f;
+  }
+  .desktop-week-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 0 #c4552f;
+  }
+  .desktop-week-primary:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #c4552f;
+  }
+  .desktop-week-ghost {
+    border: 1px solid rgba(32,48,43,.14);
+    background: #fff;
+    color: #20302b;
+  }
+  .desktop-week-ghost:hover {
+    transform: translateY(-2px);
+    border-color: rgba(32,48,43,.26);
+    box-shadow: 0 4px 12px rgba(36,53,44,.06);
+  }
+
+  /* Map Card */
+  .desktop-map-card {
+    border: 1px solid rgba(32,48,43,.12);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 2px 0 rgba(36,53,44,.06);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .desktop-map-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 22px 24px 14px;
+  }
+  .desktop-map-head h2 {
+    margin: 6px 0 0;
+    font-size: 24px;
+    font-weight: 800;
+    color: #20302b;
+    font-family: "Microsoft YaHei UI","Noto Sans SC","PingFang SC",system-ui,sans-serif;
+  }
+  .desktop-map-head small {
+    padding: 5px 10px;
+    border-radius: 8px;
+    background: #f1efe8;
+    color: #66746e;
+    font-size: 12px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .desktop-map-poster {
+    display: block;
+    flex: 1;
+    min-height: 280px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+  }
+  .desktop-map-poster::after {
+    content: "点击查看大图";
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    padding: 7px 12px;
+    border-radius: 9px;
+    background: rgba(255,255,255,.92);
+    color: #20302b;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    transition: opacity .2s ease;
+  }
+  .desktop-map-poster:hover::after {
+    opacity: .7;
+  }
+  .desktop-map-poster img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 35%;
+    transition: transform .4s ease;
+  }
+  .desktop-map-poster:hover img {
+    transform: scale(1.03);
+  }
+}
+
+/* 手机端隐藏桌面手账区块 */
+@media (max-width: 860px) {
+  .desktop-hero,
+  .desktop-questions,
+  .desktop-essentials,
+  .desktop-ask-btn {
+    display: none !important;
+  }
+}
+
+/* 桌面端 Q&A 间距适应新手账布局 */
+@media (min-width: 861px) {
+  .qa-section {
+    margin-top: 0;
+    padding-top: 44px;
+  }
+
+  /* 桌面端弹窗适配 — 修复卡死问题 */
+  .journal-wechat-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 130;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+    background: rgba(12,14,15,.72);
+    backdrop-filter: blur(12px);
+    transition: opacity .28s ease;
+  }
+  .journal-wechat-modal.is-open {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .journal-quick-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 125;
+    align-items: flex-end;
+    justify-content: center;
+    background: rgba(12,14,15,.45);
+    backdrop-filter: blur(4px);
+    transition: opacity .24s ease;
+  }
+  .journal-quick-modal.is-open {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .j-wechat-panel {
+    position: relative;
+    width: min(400px, calc(100% - 44px));
+    max-height: calc(100svh - 64px);
+    padding: 28px 24px 24px;
+    border-radius: 18px;
+    background: var(--j-surface, #fff);
+    box-shadow: 0 20px 60px rgba(0,0,0,.25);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    text-align: center;
+  }
+
+  .j-quick-panel {
+    position: relative;
+    width: min(520px, calc(100% - 44px));
+    max-height: 70vh;
+    padding: 28px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+    border-radius: 18px;
+    background: var(--j-surface, #fff);
+    box-shadow: 0 -10px 40px rgba(0,0,0,.15);
+    overflow-y: auto;
+    transform: none !important;
+  }
+
+  .j-quick-modal {
+    align-items: center !important;
+  }
+}
