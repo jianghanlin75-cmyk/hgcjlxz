@@ -2293,6 +2293,25 @@ body.owner-unlocked .place-card.is-hidden-card::before {
 }
 
 
+/* 板块描述编辑器 */
+.tone-editor { margin-top: 10px; }
+.tone-editor textarea {
+  width: 100%; max-width: 680px;
+  padding: 10px 12px;
+  border: 1px solid rgba(21,23,24,.18);
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.78);
+  color: var(--ink);
+  font: inherit; font-size: .95rem; line-height: 1.7;
+  resize: vertical;
+  outline: none;
+}
+.tone-editor textarea:focus {
+  border-color: rgba(21,23,24,.36);
+  background: var(--white);
+}
+.tone-editor-actions { display: flex; gap: 8px; margin-top: 8px; }
+
 /* 2026-06 修复：板块管理 + 图片单张管理 */
 .rail-actions {
   display: grid;

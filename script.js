@@ -603,8 +603,16 @@
               <strong>${escapeHtml(section.label)}</strong>
             </div>
             <h2 class="module-title">${escapeHtml(section.label)}</h2>
-            <p class="module-tone">${escapeHtml(section.tone)}</p>
+            <p class="module-tone" data-tone-display="${section.id}">${escapeHtml(section.tone)}</p>
+            <div class="tone-editor" data-tone-editor="${section.id}" hidden>
+              <textarea data-tone-textarea="${section.id}" rows="3">${escapeHtml(section.tone)}</textarea>
+              <div class="tone-editor-actions">
+                <button class="tool-button" type="button" data-tone-save="${section.id}"><i data-lucide="check"></i><span>保存</span></button>
+                <button class="tool-button ghost" type="button" data-tone-cancel="${section.id}"><i data-lucide="x"></i><span>取消</span></button>
+              </div>
+            </div>
             <div class="section-admin owner-only">
+              <button class="tool-button ghost" type="button" data-edit-tone="${section.id}"><span>编辑描述</span></button>
               <button class="tool-button ghost" type="button" data-edit-section="${section.id}">${icon("settings-2")}<span>编辑板块</span></button>
               <button class="tool-button danger" type="button" data-delete-section="${section.id}">${icon("trash-2")}<span>删除板块</span></button>
             </div>
@@ -1646,6 +1654,44 @@
     rerenderEditableArea();
   }
 
+  function openToneEditor(sectionId) {
+    if (!requireOwner("编辑描述")) return;
+    var display = document.querySelector('[data-tone-display="' + cssEscape(sectionId) + '"]');
+    var editor = document.querySelector('[data-tone-editor="' + cssEscape(sectionId) + '"]');
+    if (!display || !editor) return;
+    display.hidden = true;
+    editor.hidden = false;
+    var textarea = editor.querySelector('textarea');
+    if (textarea) { textarea.value = display.textContent; textarea.focus(); }
+    // 隐藏编辑按钮
+    var btn = document.querySelector('[data-edit-tone="' + cssEscape(sectionId) + '"]');
+    if (btn) btn.style.display = 'none';
+  }
+
+  function saveTone(sectionId) {
+    var section = getSection(sectionId);
+    if (!section) return;
+    var textarea = document.querySelector('[data-tone-textarea="' + cssEscape(sectionId) + '"]');
+    if (!textarea) return;
+    section.tone = textarea.value.trim();
+    if (!saveContent()) return;
+    var display = document.querySelector('[data-tone-display="' + cssEscape(sectionId) + '"]');
+    var editor = document.querySelector('[data-tone-editor="' + cssEscape(sectionId) + '"]');
+    var btn = document.querySelector('[data-edit-tone="' + cssEscape(sectionId) + '"]');
+    if (display) { display.textContent = section.tone; display.hidden = false; }
+    if (editor) editor.hidden = true;
+    if (btn) btn.style.display = '';
+  }
+
+  function cancelToneEdit(sectionId) {
+    var display = document.querySelector('[data-tone-display="' + cssEscape(sectionId) + '"]');
+    var editor = document.querySelector('[data-tone-editor="' + cssEscape(sectionId) + '"]');
+    var btn = document.querySelector('[data-edit-tone="' + cssEscape(sectionId) + '"]');
+    if (display) display.hidden = false;
+    if (editor) editor.hidden = true;
+    if (btn) btn.style.display = '';
+  }
+
   function deleteSection(sectionId) {
     if (!requireOwner("删除板块")) return;
     const section = getSection(sectionId);
@@ -2227,6 +2273,14 @@
         deleteSection(deleteSectionButton.dataset.deleteSection);
         return;
       }
+
+      // 编辑板块描述
+      const editToneBtn = event.target.closest("[data-edit-tone]");
+      const saveToneBtn = event.target.closest("[data-tone-save]");
+      const cancelToneBtn = event.target.closest("[data-tone-cancel]");
+      if (editToneBtn) { openToneEditor(editToneBtn.dataset.editTone); return; }
+      if (saveToneBtn) { saveTone(saveToneBtn.dataset.toneSave); return; }
+      if (cancelToneBtn) { cancelToneEdit(cancelToneBtn.dataset.toneCancel); return; }
       if (filterButton) {
         toggleElementCards(filterButton.dataset.sectionFilter, filterButton.dataset.element, { scroll: true });
         return;
