@@ -38,7 +38,20 @@ function buildHero(){return '<section class="j-hero"><div class="j-sun"></div><d
 
 function buildQuestions(){var h='<section class="j-questions"><div class="j-section-title"><h2>你可能正在找</h2><span>点开先看简答</span></div><div class="j-q-grid">';QQ.forEach(function(q){h+='<button class="j-q" data-j-quick="'+q.key+'"><span class="j-bubble">'+q.icon+'</span>'+esc(q.title)+'</button>'});return h+'</div></section>'}
 
-function buildGuide(){var routes=getRoutes(),first=routes[0]||{},steps=Array.isArray(first.steps)&&first.steps.length?first.steps.slice(0,4):['从校门进入校园','到专业报到处登记','前往寝室完成入住','熟悉快递与生活区'];var h='<section class="j-guide" id="j-guide"><div class="j-guide-head"><div><span>到校不慌</span><h2>新生第一周</h2></div><button data-j-nav="routes">完整路线 →</button></div><article class="j-week-card"><div class="j-week-intro"><span class="j-tag">报到当天</span><h3>先安顿，再慢慢熟悉校园</h3><p>跟着四步走，把最重要的事情先办好。</p></div><ol class="j-week-steps">';steps.forEach(function(step,index){h+='<li><span>'+String(index+1).padStart(2,'0')+'</span><strong>'+esc(step)+'</strong></li>'});return h+'</ol><div class="j-week-actions"><button data-j-nav="routes">查看完整路线</button><button data-j-nav="modules">浏览校园板块</button></div></article></section>'}
+function buildGuide(){var routes=getRoutes();var h='<section class="j-guide" id="j-guide"><div class="j-guide-head"><div><span>到校不慌</span><h2>新生第一周</h2></div></div><article class="j-week-card"><div class="j-route-tabs" id="jRouteTabs">';routes.forEach(function(r,i){h+='<button class="j-route-tab'+(i===0?' on':'')+'" data-jr="'+r.id+'">'+esc(r.label)+'</button>'});h+='</div><div class="j-week-intro"><span class="j-tag" id="jRouteTag">'+esc(routes[0]?routes[0].label:'报到首日')+'</span><h3 id="jRouteTitle">'+esc(routes[0]?routes[0].title:'校门 → 寝室 → 快递 → 食堂周边')+'</h3></div><ol class="j-week-steps" id="jRouteSteps"></ol><div class="j-week-actions"><button data-j-nav="modules">浏览校园板块</button></div></article></section>';return h}
+
+function initGuideRoutes(){var routes=getRoutes();if(!routes.length)return;
+function show(r){
+  $$('.j-route-tab').forEach(function(t){t.classList.toggle('on',t.dataset.jr===r.id)});
+  var tag=$('#jRouteTag'),title=$('#jRouteTitle'),steps=$('#jRouteSteps');
+  if(tag)tag.textContent=r.label;if(title)title.textContent=r.title;
+  if(steps){steps.innerHTML='';var ss=Array.isArray(r.steps)?r.steps:[];
+    ss.forEach(function(s,i){var li=document.createElement('li');li.innerHTML='<span>'+String(i+1).padStart(2,'0')+'</span><strong>'+esc(s)+'</strong>';steps.appendChild(li)});
+  }
+}
+$$('.j-route-tab').forEach(function(t){if(t._jw)return;t._jw=true;t.addEventListener('click',function(){var r=routes.find(function(x){return x.id===t.dataset.jr});if(r)show(r)})});
+show(routes[0]);
+}
 
 /* ===== 手绘校园地图：九个板块的高德地图保持独立 ===== */
 function buildMap(){return '<section class="j-map-section" id="j-map-area"><div class="j-map-shell"><div class="j-map-head"><div><span>一图认路</span><h2>校园地图</h2></div><small>手绘版</small></div><a class="j-map-poster" href="assets/images/hbeu-illustrated-campus-map.jpg" target="_blank" rel="noopener"><img src="assets/images/hbeu-illustrated-campus-map.jpg" alt="湖北工程学院手绘校园地图" loading="lazy"><span>点击查看大图</span></a></div></section>'}
@@ -48,7 +61,7 @@ window.renderMobileJournal=function(){if(!isActive()){var o=$('.mobile-journal')
 var container=$('.mobile-journal');if(!container){container=document.createElement('div');container.className='mobile-journal';var main=document.querySelector('main');if(main)main.insertBefore(container,main.firstChild);else document.body.prepend(container)}
 var tb=$('.mobile-topbar');if(!tb){var hdr=document.createElement('div');hdr.innerHTML=buildMobileTopbar();document.body.prepend(hdr.firstElementChild)}
 container.innerHTML=buildHero()+buildQuestions()+buildGuide()+buildMap();
-initJournalNav();wireJournalEvents();wireOverflow();
+initJournalNav();wireJournalEvents();wireOverflow();initGuideRoutes();
 }
 
 function initJournalNav(){var ex=$('.journal-bottom-nav');if(ex)ex.remove();var n=document.createElement('nav');n.className='journal-bottom-nav';n.setAttribute('aria-label','手机端导航');n.innerHTML='<button class="j-nav-item active" data-j-nav="home">'+I.home+'首页</button><button class="j-nav-item" data-j-nav="guide">'+I.guide+'攻略</button><button class="j-nav-ask" data-j-open-wechat>'+I.ask+'问学长</button><button class="j-nav-item" data-j-nav="map">'+I.map+'地图</button><button class="j-nav-item" data-j-nav="qa">'+I.ask+'问答</button>';document.body.appendChild(n)}

@@ -110,6 +110,10 @@
   .j-week-actions{display:flex;gap:9px;margin-top:14px}
   .j-week-actions button{flex:1;min-height:44px;padding:0 10px;border:1px solid var(--j-line);border-radius:11px;background:var(--j-surface);color:var(--j-ink);font-size:14px;font-weight:700;cursor:pointer;touch-action:manipulation}
   .j-week-actions button:first-child{border-color:transparent;background:var(--j-primary);color:#fff}
+  /* 路线标签（报到首日/军训/周末碎片） */
+  .j-route-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .j-route-tab{min-height:34px;padding:0 12px;border:1px solid var(--j-line);border-radius:17px;background:var(--j-soft);font-size:12px;font-weight:650;color:var(--j-muted);cursor:pointer;touch-action:manipulation;font-family:inherit;transition:all .18s ease}
+  .j-route-tab.on{background:var(--j-ink);color:#fff;border-color:var(--j-ink)}
 
   /* ===== 手绘校园地图；板块高德地图样式保持独立 ===== */
   .j-map-section{padding:0 22px 22px}
